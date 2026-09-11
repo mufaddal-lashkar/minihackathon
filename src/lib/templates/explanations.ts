@@ -14,14 +14,28 @@ const BY_SEVERITY_HI: Record<Severity, string> = {
   EMERGENCY: "अभी आपातकालीन सेवा को फ़ोन करें। इंतज़ार न करें।",
 };
 
+const BY_SEVERITY_GU: Record<Severity, string> = {
+  SELF_CARE: "આ રિકવરીનો સામાન્ય ભાગ લાગે છે. તમારી યોજનાનું પાલન કરતા રહો અને કાલે ફરી તપાસ કરો.",
+  CALL_CLINIC: "આજે તમારા ક્લિનિકને ફોન કરો. કદાચ ગંભીર નથી, પણ તેમને જાણ હોવી જોઈએ.",
+  URGENT_CARE: "આજે જ ડૉક્ટરને બતાવો. અર્જન્ટ કેરમાં જાઓ, અથવા ક્લિનિકને ફોન કરીને કહો કે તમને આવવાની સલાહ અપાઈ છે.",
+  EMERGENCY: "હમણાં જ ઇમરજન્સી સેવાને ફોન કરો. રાહ ન જુઓ.",
+};
+
 export function templateExplanation(severity: Severity, language = "en"): string {
-  return language === "hi" ? BY_SEVERITY_HI[severity] : BY_SEVERITY[severity];
+  if (language === "hi") return BY_SEVERITY_HI[severity];
+  if (language === "gu") return BY_SEVERITY_GU[severity];
+  return BY_SEVERITY[severity];
 }
 
-export const NURSE_REVIEWED: Record<string, string> = { en: "A nurse reviewed your message.", hi: "एक नर्स ने आपका संदेश देखा है।" };
+export const NURSE_REVIEWED: Record<string, string> = {
+  en: "A nurse reviewed your message.",
+  hi: "एक नर्स ने आपका संदेश देखा है।",
+  gu: "એક નર્સે તમારો સંદેશ જોયો છે.",
+};
 export const SLA_EXPIRED: Record<string, string> = {
   en: "A nurse was not able to review this in time. Please call your clinic so they can check in with you.",
   hi: "नर्स समय पर इसे नहीं देख पाईं। कृपया अपने क्लिनिक को फ़ोन करें ताकि वे आपसे बात कर सकें।",
+  gu: "નર્સ સમયસર આ જોઈ શક્યા નહીં. કૃપા કરીને તમારા ક્લિનિકને ફોન કરો જેથી તેઓ તમારી સાથે વાત કરી શકે.",
 };
 
 export const STUB_KEYWORDS: Array<[RegExp, string]> = [

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Stethoscope, Sparkles, ChevronRight } from "lucide-react";
 import { store, recoveryDayFor } from "@/lib/db/store";
-import { TopBar } from "@/components/shell";
+import { HeartPulse } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,12 @@ export default function Home() {
   const patients = [...store().patients.values()];
   return (
     <>
-      <TopBar active="patients" />
+      <header className="border-b border-border bg-surface/90">
+        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4">
+          <Link href="/" className="inline-flex items-center gap-2" aria-label="RecoverWell home"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-on-primary"><HeartPulse size={18} aria-hidden /></span><span className="font-heading text-lg font-semibold">RecoverWell</span></Link>
+          <nav className="flex gap-1 text-sm font-medium"><Link href="/nurse" className="inline-flex min-h-11 items-center rounded-lg px-3 text-primary hover:bg-muted">Nurse</Link><Link href={`/patient/${patients[0]?.id}`} className="inline-flex min-h-11 items-center rounded-lg px-3 text-primary hover:bg-muted">Patient</Link></nav>
+        </div>
+      </header>
       <main id="main" className="mx-auto w-full max-w-6xl px-4 py-10">
         <section className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-center">
           <div className="rise">
@@ -23,7 +28,7 @@ export default function Home() {
                 Try the patient app <ArrowRight size={18} aria-hidden />
               </Link>
               <Link href="/nurse" className="press inline-flex min-h-12 items-center gap-2 rounded-xl bg-surface px-5 font-semibold text-primary ring-1 ring-border transition-colors hover:bg-muted">
-                <Stethoscope size={18} aria-hidden /> Nurse inbox
+                <Stethoscope size={18} aria-hidden /> Nurse dashboard
               </Link>
             </div>
           </div>

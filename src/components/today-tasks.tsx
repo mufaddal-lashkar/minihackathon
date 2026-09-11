@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Volume2, Languages } from "lucide-react";
+import { Check, Volume2, Square } from "lucide-react";
+import { t } from "@/lib/i18n";
+import { useSpeech } from "@/lib/speech";
 
 type Group = { title: string; items: string[] };
 
-export function TodayTasks({ patientId, day, plan }: { patientId: string; day: number; plan: Group[] }) {
+export function TodayTasks({ patientId, day, plan, lang }: { patientId: string; day: number; plan: Group[]; lang: string }) {
   const key = `rw-done-${patientId}-${day}`;
   const [done, setDone] = useState<Record<string, boolean>>({});
   useEffect(() => {
-    const t = setTimeout(() => { try { setDone(JSON.parse(localStorage.getItem(key) ?? "{}")); } catch {} }, 0);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => { try { setDone(JSON.parse(localStorage.getItem(key) ?? "{}")); } catch {} }, 0);
+    return () => clearTimeout(tm);
   }, [key]);
   const toggle = (id: string) => setDone((d) => { const n = { ...d, [id]: !d[id] }; try { localStorage.setItem(key, JSON.stringify(n)); } catch {} return n; });
   const total = plan.reduce((n, g) => n + g.items.length, 0);
@@ -19,7 +21,7 @@ export function TodayTasks({ patientId, day, plan }: { patientId: string; day: n
   return (
     <div className="stagger mt-2 space-y-3">
       <div className="flex items-center justify-between text-xs text-muted-fg" aria-live="polite">
-        <span>{completed} of {total} done today</span>
+        <span>{t(lang, "doneToday", { done: completed, total })}</span>
         <span className="h-1.5 w-32 overflow-hidden rounded-full bg-muted" aria-hidden><span className="block h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${total ? (completed / total) * 100 : 0}%` }} /></span>
       </div>
       {plan.map((g) => (
@@ -45,29 +47,18 @@ export function TodayTasks({ patientId, day, plan }: { patientId: string; day: n
   );
 }
 
-export function HeaderTools({ patientId, language, readout }: { patientId: string; language: string; readout: string }) {
-  const [lang, setLang] = useState(language);
-  const [saving, setSaving] = useState(false);
-  async function toggleLang() {
-    const next = lang === "hi" ? "en" : "hi";
-    setSaving(true);
-    await fetch(`/api/patients/${patientId}/plan`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ language: next }) });
-    setLang(next);
-    setSaving(false);
-  }
-  function speak() {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(readout);
-    u.lang = "en-US";
-    window.speechSynthesis.speak(u);
-  }
-  return (
-    <div className="flex items-center gap-1">
-      <button onClick={speak} aria-label="Read today's plan aloud" className="flex h-11 w-11 items-center justify-center rounded-full text-primary hover:bg-muted"><Volume2 size={20} aria-hidden /></button>
-      <button onClick={toggleLang} disabled={saving} aria-label={`Answer language: ${lang === "hi" ? "Hindi" : "English"}. Tap to switch.`} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-semibold text-primary hover:bg-muted disabled:opacity-50">
-        <Languages size={18} aria-hidden /> {lang === "hi" ? "हिंदी" : "EN"}
-      </button>
-    </div>
+// Read-aloud with a real stop. Speaks in the patient's language when the device has a matching voice;
+// the plan text itself is in the language it was written in, so the UI strings are what get localised.
+export function ReadAloud({ text, lang, compact }: { text: string; lang: string; compact?: boolean }) {
+  const { speak, stop, speaking, supported } = useSpeech();
+  if (!supported) return null;
+  return speaking ? (
+    <button onClick={stop} className={`press inline-flex min-h-11 items-center gap-2 rounded-full bg-red-50 font-semibold text-red-800 ring-1 ring-red-200 ${compact ? "px-3 text-xs" : "px-4 text-sm"}`} aria-label={t(lang, "stopReading")}>
+      <Square size={compact ? 14 : 16} aria-hidden /> {t(lang, "stopReading")}
+    </button>
+  ) : (
+    <button onClick={() => speak(text, lang)} className={`press inline-flex min-h-11 items-center gap-2 rounded-full bg-surface font-semibold text-primary ring-1 ring-border hover:bg-muted ${compact ? "px-3 text-xs" : "px-4 text-sm"}`} aria-label={t(lang, "readAloud")}>
+      <Volume2 size={compact ? 14 : 18} aria-hidden /> {t(lang, "readAloud")}
+    </button>
   );
 }

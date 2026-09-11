@@ -1,0 +1,92 @@
+export type Lang = "en" | "hi" | "gu";
+export const LANGS: { code: Lang; label: string; native: string; bcp47: string }[] = [
+  { code: "en", label: "English", native: "English", bcp47: "en-IN" },
+  { code: "hi", label: "Hindi", native: "हिंदी", bcp47: "hi-IN" },
+  { code: "gu", label: "Gujarati", native: "ગુજરાતી", bcp47: "gu-IN" },
+];
+export const LANG_NAME: Record<Lang, string> = { en: "English", hi: "Hindi (Devanagari script)", gu: "Gujarati (Gujarati script)" };
+
+const DICT = {
+  hello: { en: "Hello", hi: "नमस्ते", gu: "નમસ્તે" },
+  dayAfter: { en: "Day {day} after your {procedure}", hi: "आपकी {procedure} के बाद दिन {day}", gu: "તમારી {procedure} પછી દિવસ {day}" },
+  surgeryOn: { en: "Surgery on {date}", hi: "सर्जरी {date} को हुई", gu: "સર્જરી {date} ના રોજ" },
+  normalToday: { en: "Normal for today", hi: "आज के लिए सामान्य", gu: "આજ માટે સામાન્ય" },
+  mayNotice: { en: "You may notice {list}. These are expected on day {day}.", hi: "आपको {list} महसूस हो सकता है। दिन {day} पर यह सामान्य है।", gu: "તમને {list} અનુભવાઈ શકે છે. દિવસ {day} પર આ સામાન્ય છે." },
+  planToday: { en: "Your plan today", hi: "आज की आपकी योजना", gu: "આજની તમારી યોજના" },
+  doneToday: { en: "{done} of {total} done today", hi: "आज {total} में से {done} पूरे", gu: "આજે {total} માંથી {done} પૂર્ણ" },
+  recentCheckins: { en: "Recent check-ins", hi: "हाल की जाँचें", gu: "તાજેતરની તપાસ" },
+  nurseReviewing: { en: "Nurse reviewing", hi: "नर्स देख रही हैं", gu: "નર્સ તપાસી રહ્યા છે" },
+  somethingOff: { en: "Something feels off?", hi: "कुछ ठीक नहीं लग रहा?", gu: "કંઈક બરાબર નથી લાગતું?" },
+  tellUs: { en: "Tell us what you notice", hi: "बताइए आपको क्या महसूस हो रहा है", gu: "અમને કહો તમને શું અનુભવાય છે" },
+  yourAnswer: { en: "Your answer", hi: "आपका जवाब", gu: "તમારો જવાબ" },
+  tapTypeSpeak: { en: "Tap a common one, type, or speak. We check it against your recovery plan for today.", hi: "किसी आम लक्षण पर टैप करें, लिखें या बोलें। हम इसे आज की आपकी रिकवरी योजना से मिलाते हैं।", gu: "કોઈ સામાન્ય લક્ષણ પર ટૅપ કરો, લખો અથવા બોલો. અમે તેને આજની તમારી રિકવરી યોજના સાથે તપાસીએ છીએ." },
+  inYourWords: { en: "In your own words", hi: "अपने शब्दों में", gu: "તમારા પોતાના શબ્દોમાં" },
+  placeholder: { en: "e.g. the redness around my cut is spreading", hi: "जैसे: मेरे घाव के आसपास लाली फैल रही है", gu: "દા.ત. મારા ઘા આસપાસ લાલાશ ફેલાઈ રહી છે" },
+  checkNow: { en: "Check now", hi: "अभी जाँचें", gu: "હમણાં તપાસો" },
+  speak: { en: "Speak", hi: "बोलें", gu: "બોલો" },
+  stop: { en: "Stop", hi: "रोकें", gu: "રોકો" },
+  checking: { en: "Checking against your day-by-day plan…", hi: "आपकी दिन-प्रतिदिन योजना से मिला रहे हैं…", gu: "તમારી દિવસ-બ-દિવસ યોજના સાથે તપાસી રહ્યા છીએ…" },
+  nurseChecking: { en: "A nurse is reviewing your check-in", hi: "एक नर्स आपकी जाँच देख रही हैं", gu: "એક નર્સ તમારી તપાસ જોઈ રહ્યા છે" },
+  nurseCheckingBody: { en: "We never reassure without a nurse’s eyes. This screen updates by itself — usually within a few minutes.", hi: "नर्स की नज़र के बिना हम कभी आश्वस्त नहीं करते। यह स्क्रीन अपने आप अपडेट होगी — आमतौर पर कुछ मिनटों में।", gu: "નર્સની નજર વિના અમે ક્યારેય ખાતરી આપતા નથી. આ સ્ક્રીન આપમેળે અપડેટ થશે — સામાન્ય રીતે થોડી મિનિટોમાં." },
+  whileYouWait: { en: "While you wait — if ANY of these are true, call emergency services now. Do not wait for us:", hi: "इंतज़ार के दौरान — अगर इनमें से कोई भी सच है, तो अभी आपातकालीन सेवा को फ़ोन करें। हमारा इंतज़ार न करें:", gu: "રાહ જોતી વખતે — જો આમાંથી કોઈ પણ સાચું હોય, તો હમણાં જ ઇમરજન્સી સેવાને ફોન કરો. અમારી રાહ ન જુઓ:" },
+  emergency: { en: "Emergency", hi: "आपातकाल", gu: "ઇમરજન્સી" },
+  myClinic: { en: "My clinic", hi: "मेरा क्लिनिक", gu: "મારું ક્લિનિક" },
+  youSaid: { en: "You said", hi: "आपने कहा", gu: "તમે કહ્યું" },
+  whyAnswer: { en: "Why this answer?", hi: "यह जवाब क्यों?", gu: "આ જવાબ કેમ?" },
+  reviewedByNurse: { en: "Reviewed by a nurse", hi: "नर्स द्वारा जाँचा गया", gu: "નર્સ દ્વારા તપાસાયું" },
+  callEmergency: { en: "Call emergency services", hi: "आपातकालीन सेवा को फ़ोन करें", gu: "ઇમરજન્સી સેવાને ફોન કરો" },
+  callClinicNow: { en: "Call the clinic now", hi: "अभी क्लिनिक को फ़ोन करें", gu: "હમણાં ક્લિનિકને ફોન કરો" },
+  readAloud: { en: "Read aloud", hi: "सुनें", gu: "સાંભળો" },
+  stopReading: { en: "Stop", hi: "रोकें", gu: "રોકો" },
+  reportAnother: { en: "Report something else", hi: "कुछ और बताएँ", gu: "બીજું કંઈક જણાવો" },
+  couldntCheck: { en: "We couldn’t check this right now.", hi: "हम अभी इसे जाँच नहीं पाए।", gu: "અમે હમણાં આ તપાસી શક્યા નહીં." },
+  callDirectly: { en: "Please call your clinic directly.", hi: "कृपया सीधे अपने क्लिनिक को फ़ोन करें।", gu: "કૃપા કરીને સીધા તમારા ક્લિનિકને ફોન કરો." },
+  tryAgain: { en: "try again", hi: "फिर कोशिश करें", gu: "ફરી પ્રયાસ કરો" },
+  checkIn: { en: "Check in", hi: "जाँच करें", gu: "તપાસ કરો" },
+  navToday: { en: "Today", hi: "आज", gu: "આજે" },
+  navHistory: { en: "History", hi: "इतिहास", gu: "ઇતિહાસ" },
+  navPlan: { en: "Plan", hi: "योजना", gu: "યોજના" },
+  navProfile: { en: "Profile", hi: "प्रोफ़ाइल", gu: "પ્રોફાઇલ" },
+  language: { en: "Language", hi: "भाषा", gu: "ભાષા" },
+  aiSkipped: { en: "Red-flag rule · AI skipped", hi: "रेड-फ़्लैग नियम · AI नहीं चला", gu: "રેડ-ફ્લેગ નિયમ · AI ચાલ્યું નહીં" },
+  aiUsed: { en: "Gemini read your words · rules decided", hi: "Gemini ने आपके शब्द पढ़े · नियमों ने तय किया", gu: "Gemini એ તમારા શબ્દો વાંચ્યા · નિયમોએ નક્કી કર્યું" },
+  aiFallback: { en: "AI unavailable · keyword fallback · rules decided", hi: "AI उपलब्ध नहीं · कीवर्ड फ़ॉलबैक · नियमों ने तय किया", gu: "AI ઉપલબ્ધ નથી · કીવર્ડ ફોલબેક · નિયમોએ નક્કી કર્યું" },
+  historyTitle: { en: "Your recovery so far", hi: "अब तक की आपकी रिकवरी", gu: "અત્યાર સુધીની તમારી રિકવરી" },
+  checkins: { en: "Check-ins", hi: "जाँचें", gu: "તપાસ" },
+  escalations: { en: "Escalations", hi: "एस्केलेशन", gu: "એસ્કેલેશન" },
+  nurseReviews: { en: "Nurse reviews", hi: "नर्स समीक्षाएँ", gu: "નર્સ સમીક્ષાઓ" },
+  severityOverTime: { en: "How urgent each check-in was", hi: "हर जाँच कितनी ज़रूरी थी", gu: "દરેક તપાસ કેટલી તાત્કાલિક હતી" },
+  noCheckins: { en: "No check-ins yet. Use “Something feels off?” on the Today screen.", hi: "अभी कोई जाँच नहीं। ‘आज’ स्क्रीन पर ‘कुछ ठीक नहीं लग रहा?’ का उपयोग करें।", gu: "હજી કોઈ તપાસ નથી. ‘આજે’ સ્ક્રીન પર ‘કંઈક બરાબર નથી લાગતું?’ વાપરો." },
+  sevSelf: { en: "Self care", hi: "स्वयं देखभाल", gu: "સ્વ-સંભાળ" },
+  sevCall: { en: "Call clinic", hi: "क्लिनिक को फ़ोन", gu: "ક્લિનિકને ફોન" },
+  sevUrgent: { en: "Urgent care", hi: "तुरंत देखभाल", gu: "તાત્કાલિક સંભાળ" },
+  sevEmergency: { en: "Emergency", hi: "आपातकाल", gu: "ઇમરજન્સી" },
+  labelSelf: { en: "Looks normal for today", hi: "आज के लिए सामान्य लगता है", gu: "આજ માટે સામાન્ય લાગે છે" },
+  labelCall: { en: "Call your clinic today", hi: "आज अपने क्लिनिक को फ़ोन करें", gu: "આજે તમારા ક્લિનિકને ફોન કરો" },
+  labelUrgent: { en: "Be seen today", hi: "आज ही डॉक्टर को दिखाएँ", gu: "આજે જ ડૉક્ટરને બતાવો" },
+  labelEmergency: { en: "Call emergency services", hi: "आपातकालीन सेवा को फ़ोन करें", gu: "ઇમરજન્સી સેવાને ફોન કરો" },
+  actionSelf: { en: "Keep following your plan", hi: "अपनी योजना का पालन करते रहें", gu: "તમારી યોજનાનું પાલન કરતા રહો" },
+  actionCall: { en: "Not urgent, but they should know", hi: "ज़रूरी नहीं, पर उन्हें पता होना चाहिए", gu: "તાત્કાલિક નથી, પણ તેમને જાણ હોવી જોઈએ" },
+  actionUrgent: { en: "Go to urgent care now", hi: "अभी अर्जेंट केयर जाएँ", gu: "હમણાં અર્જન્ટ કેરમાં જાઓ" },
+  actionEmergency: { en: "Do not wait", hi: "इंतज़ार न करें", gu: "રાહ ન જુઓ" },
+  rf1: { en: "Chest pain or trouble breathing", hi: "सीने में दर्द या साँस लेने में तकलीफ़", gu: "છાતીમાં દુખાવો અથવા શ્વાસ લેવામાં તકલીફ" },
+  rf2: { en: "Bleeding that soaks through the dressing", hi: "पट्टी भिगो देने वाला खून", gu: "પાટો પલાળી દે તેટલું લોહી" },
+  rf3: { en: "The wound has opened, or the area is hot, red and spreading fast", hi: "घाव खुल गया है, या जगह गर्म, लाल और तेज़ी से फैल रही है", gu: "ઘા ખુલી ગયો છે, અથવા જગ્યા ગરમ, લાલ અને ઝડપથી ફેલાઈ રહી છે" },
+  rf4: { en: "Calf pain with swelling", hi: "पिंडली में दर्द और सूजन", gu: "પિંડીમાં દુખાવો અને સોજો" },
+  rf5: { en: "You feel faint, or confused", hi: "चक्कर या भ्रम महसूस होना", gu: "ચક્કર અથવા ગૂંચવણ અનુભવવી" },
+  rf6: { en: "Fever of 38 °C / 100.4 °F or more", hi: "38 °C / 100.4 °F या अधिक बुखार", gu: "38 °C / 100.4 °F કે વધુ તાવ" },
+  rf7: { en: "You cannot pass urine", hi: "पेशाब नहीं आ रहा", gu: "પેશાબ થતો નથી" },
+} as const;
+
+export type Key = keyof typeof DICT;
+
+export function t(lang: string, key: Key, vars: Record<string, string | number> = {}): string {
+  const l = (["en", "hi", "gu"].includes(lang) ? lang : "en") as Lang;
+  let s: string = DICT[key][l] ?? DICT[key].en;
+  for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
+  return s;
+}
+
+export function bcp47(lang: string) {
+  return LANGS.find((l) => l.code === lang)?.bcp47 ?? "en-IN";
+}

@@ -13,7 +13,10 @@ export type Patient = {
   comorbidities: string[];
   anticoagulated: boolean;
   language: string;
-  plan: { title: string; items: string[] }[];
+  phone?: string;
+  clinicPhone?: string;
+  surgeon?: string;
+  plan: { title: string; items: string[]; sourceSpans?: string[] }[];
 };
 
 export type HumanDecision = {
@@ -46,6 +49,7 @@ export type ReportRecord = {
   requiresHuman: boolean;
   humanDecision?: HumanDecision;
   usedLlm: boolean;
+  seeded?: boolean;
 };
 
 type Store = { patients: Map<string, Patient>; reports: Map<string, ReportRecord>; db: DatabaseSync };
@@ -61,7 +65,7 @@ function daysAgo(n: number) {
 export const SEED_PATIENTS: Patient[] = [
     {
       id: "p-asha", name: "Asha Mehta", procedureCode: "appendectomy", procedureLabel: "Laparoscopic appendectomy",
-      surgeryDate: daysAgo(4), ageBand: 34, comorbidities: [], anticoagulated: false, language: "en",
+      surgeryDate: daysAgo(4), ageBand: 34, comorbidities: [], anticoagulated: false, language: "en", phone: "+91 98200 11223", clinicPhone: "+91 22 4000 1000", surgeon: "Dr. Nair",
       plan: [
         { title: "Wound care", items: ["Keep dressing dry for 48h", "Shower from day 2, pat dry", "No baths or swimming for 2 weeks"] },
         { title: "Activity", items: ["Short walks 3× daily", "No lifting over 5 kg for 2 weeks"] },
@@ -70,7 +74,7 @@ export const SEED_PATIENTS: Patient[] = [
     },
     {
       id: "p-ravi", name: "Ravi Iyer", procedureCode: "knee-replacement", procedureLabel: "Total knee replacement (right)",
-      surgeryDate: daysAgo(6), ageBand: 72, comorbidities: ["diabetes"], anticoagulated: true, language: "en",
+      surgeryDate: daysAgo(6), ageBand: 72, comorbidities: ["diabetes"], anticoagulated: true, language: "en", phone: "+91 98200 44556", clinicPhone: "+91 22 4000 1000", surgeon: "Dr. Deshmukh",
       plan: [
         { title: "Mobility", items: ["Physio exercises 3× daily", "Walk with frame, weight-bear as tolerated", "Ice 20 min after exercise"] },
         { title: "Medication", items: ["Apixaban 2.5 mg twice daily (blood thinner)", "Paracetamol 1 g every 6h"] },
@@ -79,7 +83,7 @@ export const SEED_PATIENTS: Patient[] = [
     },
     {
       id: "p-fatima", name: "Fatima Khan", procedureCode: "c-section", procedureLabel: "Caesarean section",
-      surgeryDate: daysAgo(3), ageBand: 29, comorbidities: [], anticoagulated: false, language: "en",
+      surgeryDate: daysAgo(3), ageBand: 29, comorbidities: [], anticoagulated: false, language: "en", phone: "+91 98200 77889", clinicPhone: "+91 22 4000 1000", surgeon: "Dr. Shah",
       plan: [
         { title: "Wound care", items: ["Keep incision clean and dry", "Wear loose high-waisted clothing"] },
         { title: "Recovery", items: ["Rest when baby rests", "No driving for 6 weeks", "No lifting heavier than baby"] },
@@ -104,6 +108,9 @@ function init(): Store {
   const patients = new Map<string, Patient>();
   for (const row of db.prepare("SELECT json FROM patients").all() as { json: string }[]) {
     const p = JSON.parse(row.json) as Patient;
+    // Backfill fields added after the row was first written (demo DB may predate them).
+    const seed = SEED_PATIENTS.find((x) => x.id === p.id);
+    if (seed) for (const k of ["phone", "clinicPhone", "surgeon"] as const) if (!p[k]) p[k] = seed[k];
     patients.set(p.id, p);
   }
   if (patients.size === 0) {

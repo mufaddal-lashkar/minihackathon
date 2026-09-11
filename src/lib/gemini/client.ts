@@ -1,6 +1,7 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { z } from "zod";
 import type { Finding, Severity } from "@/lib/rules/types";
+import { LANG_NAME, type Lang } from "@/lib/i18n";
 
 export const SYMPTOM_CODES = [
   "serous_drainage", "wound_drainage", "mild_incisional_pain", "incisional_pain", "low_grade_temp",
@@ -63,7 +64,7 @@ export async function geminiExplain(input: {
 The decision has ALREADY been made by a clinical rule engine: severity = ${input.severity}. Reason: ${input.rationale}.
 Your job is ONLY to phrase this. Do not change, soften, or upgrade the advice. Do not add new medical advice. Do not diagnose.
 Required action by severity: SELF_CARE = keep following your plan, check in tomorrow. CALL_CLINIC = call your clinic today. URGENT_CARE = be seen today at urgent care. EMERGENCY = call emergency services now.
-Write in language code "${input.language}". Output plain text only.`],
+Write in ${LANG_NAME[input.language as Lang] ?? "English"}. Output plain text only, no markdown.`],
       ["human", `Patient wrote: "${input.rawText}"`],
     ]),
     10000,
