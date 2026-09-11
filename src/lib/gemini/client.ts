@@ -26,10 +26,11 @@ export function hasGemini() {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-// Free-tier quotas are per model. Try the configured model first, then fall through the chain;
-// a model that returned 429/404 is skipped for a cooldown so the next request goes straight to a working one.
+// Free-tier quotas are per model (and per minute). Try the configured model first, then fall through the chain.
+// A model that returned 429/404/503 is skipped for a short cooldown so later requests go straight to a working one.
+// The whole chain shares ONE deadline — a slow request must never stack timeouts model after model.
 const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
-const COOLDOWN_MS = 10 * 60 * 1000;
+const COOLDOWN_MS = 60 * 1000;
 const g = globalThis as unknown as { __geminiCooldown?: Map<string, number> };
 const cooldown = (g.__geminiCooldown ??= new Map<string, number>());
 
@@ -46,20 +47,22 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("gemini_timeout")), ms))]);
 }
 
-async function withFallback<T>(fn: (modelName: string) => Promise<T>, timeoutMs: number): Promise<T> {
+async function withFallback<T>(fn: (modelName: string) => Promise<T>, budgetMs: number): Promise<T> {
   if (!hasGemini()) throw new Error("gemini_not_configured");
-  let lastErr: unknown = new Error("no_model");
+  const deadline = Date.now() + budgetMs;
+  let lastErr: unknown = new Error("gemini_all_models_cooling_down");
   for (const m of modelChain()) {
-    const until = cooldown.get(m) ?? 0;
-    if (until > Date.now()) continue;
+    if ((cooldown.get(m) ?? 0) > Date.now()) continue;
+    const left = deadline - Date.now();
+    if (left < 1500) break;
     try {
-      return await withTimeout(fn(m), timeoutMs);
+      return await withTimeout(fn(m), left);
     } catch (err) {
       lastErr = err;
       const msg = String((err as Error).message ?? err);
       if (/429|404|503|quota|not found|not available|high demand/i.test(msg)) {
         cooldown.set(m, Date.now() + COOLDOWN_MS);
-        console.warn(`[gemini] ${m} unavailable (${msg.slice(0, 80)}…) — trying next model`);
+        console.warn(`[gemini] ${m} unavailable (${/\[(\d{3})[^\]]*\]/.exec(msg)?.[1] ?? msg.slice(0, 40)}) — trying next model`);
         continue;
       }
       throw err;
@@ -79,7 +82,7 @@ Be conservative: greetings, jokes, questions about medication, or general statem
 Only use new_confusion when the patient (or a relative) reports actual disorientation or confusion as a symptom, not when they say they are "confused about" instructions.
 Map: pink/red/redder wound → wound_redness; spreading/growing redness → spreading_redness; clear/watery fluid → serous_drainage; pus/cloudy/smelly fluid → wound_drainage; normal-sounding pain → mild_incisional_pain; strong/worsening pain → incisional_pain.`],
       ["human", rawText],
-    ]), 15000);
+    ]), 12000);
   return { findings: out.findings, confidence: out.confidence };
 }
 
@@ -92,7 +95,7 @@ Your job is ONLY to phrase this. Do not change, soften, or upgrade the advice. D
 Required action by severity: SELF_CARE = keep following your plan, check in tomorrow. CALL_CLINIC = call your clinic today. URGENT_CARE = be seen today at urgent care. EMERGENCY = call emergency services now.
 Write in ${LANG_NAME[input.language as Lang] ?? "English"}. Output plain text only, no markdown.`],
       ["human", `Patient wrote: "${input.rawText}"`],
-    ]), 10000);
+    ]), 8000);
   const text = typeof res.content === "string" ? res.content : res.content.map((c) => ("text" in c ? c.text : "")).join("");
   if (!text.trim()) throw new Error("gemini_empty");
   return text.trim();
