@@ -19,9 +19,9 @@ export default function NursePage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    const first = setTimeout(load, 0);
     const t = setInterval(load, 3000);
-    return () => clearInterval(t);
+    return () => { clearTimeout(first); clearInterval(t); };
   }, [load]);
 
   const pending = (rows ?? []).filter((r) => r.status === "pending_review");

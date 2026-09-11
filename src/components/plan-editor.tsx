@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Camera, Loader2, Plus, Save, Trash2, Check, Bot, AlertCircle } from "lucide-react";
 
-type Group = { title: string; items: string[] };
+type Group = { title: string; items: string[]; sourceSpans?: string[] };
 type P = { id: string; procedureCode: string; procedureLabel: string; surgeryDate: string; plan: Group[] };
 
 export function PlanEditor({ patient, procedures }: { patient: P; procedures: string[] }) {
@@ -78,9 +78,10 @@ export function PlanEditor({ patient, procedures }: { patient: P; procedures: st
           </div>
           <ul className="mt-1 space-y-1">
             {g.items.map((it, ii) => (
-              <li key={ii} className="flex items-center gap-1">
+              <li key={ii} className="flex flex-wrap items-center gap-1">
+                {g.sourceSpans?.[ii] && <span className="basis-full pl-2 text-xs text-muted-fg">From sheet: “{g.sourceSpans[ii]}”</span>}
                 <input aria-label={`${g.title} item ${ii + 1}`} value={it} onChange={(e) => update(gi, (x) => ({ ...x, items: x.items.map((v, j) => (j === ii ? e.target.value : v)) }))} className="min-h-11 flex-1 rounded-lg border border-transparent bg-transparent px-2 text-sm hover:border-border focus:border-primary" />
-                <button aria-label="Remove item" onClick={() => update(gi, (x) => ({ ...x, items: x.items.filter((_, j) => j !== ii) }))} className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-fg hover:text-destructive"><Trash2 size={16} aria-hidden /></button>
+                <button aria-label="Remove item" onClick={() => update(gi, (x) => ({ ...x, items: x.items.filter((_, j) => j !== ii), sourceSpans: x.sourceSpans?.filter((_, j) => j !== ii) }))} className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-fg hover:text-destructive"><Trash2 size={16} aria-hidden /></button>
               </li>
             ))}
           </ul>

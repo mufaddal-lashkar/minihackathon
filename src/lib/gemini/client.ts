@@ -76,7 +76,7 @@ Write in language code "${input.language}". Output plain text only.`],
 const PlanSchema = z.object({
   procedureLabel: z.string().describe("Name of the surgery as written on the sheet"),
   surgeryDate: z.string().optional().describe("ISO date YYYY-MM-DD if present"),
-  plan: z.array(z.object({ title: z.string(), items: z.array(z.string()) })).describe("Instruction groups, e.g. Wound care, Activity, Medication, Follow-up"),
+  plan: z.array(z.object({ title: z.string(), items: z.array(z.string()).describe("Each item simplified to plain language, one short sentence"), sourceSpans: z.array(z.string()).optional().describe("For each item, the exact original wording from the sheet, same order") })).describe("Instruction groups, e.g. Wound care, Activity, Medication, Follow-up"),
 });
 export type PlanDraft = z.infer<typeof PlanSchema>;
 

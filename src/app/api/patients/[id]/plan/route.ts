@@ -10,6 +10,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (body.surgeryDate) p.surgeryDate = body.surgeryDate;
   if (body.procedureCode) p.procedureCode = body.procedureCode;
   if (body.procedureLabel) p.procedureLabel = body.procedureLabel;
+  if (body.language) p.language = body.language;
   savePatient(p);
   return NextResponse.json(p);
 }

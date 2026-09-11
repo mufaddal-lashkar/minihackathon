@@ -43,12 +43,30 @@ export async function runReport(input: { patientId: string; reportId: string; ra
   const result = await graph.invoke({ ...input, modality: input.modality ?? "free_text" }, cfg(input.reportId));
   const rec = store().reports.get(input.reportId)!;
   const interrupted = Boolean((result as Record<string, unknown>).__interrupt__);
+  if (interrupted) scheduleSla(input.reportId);
   return { status: interrupted ? (202 as const) : (200 as const), report: rec };
+}
+
+// Nurse SLA: if no decision lands in time, the system resumes the held interrupt with CALL_CLINIC — never SELF_CARE.
+// Scheduled here (outside the graph's async context) rather than inside the node, so the resume is a fresh top-level run.
+const slaTimers = new Map<string, NodeJS.Timeout>();
+function scheduleSla(reportId: string) {
+  if (slaTimers.has(reportId)) return;
+  const slaMs = Number(process.env.REVIEW_SLA_MS ?? 15 * 60 * 1000);
+  slaTimers.set(reportId, setTimeout(() => {
+    slaTimers.delete(reportId);
+    if (store().reports.get(reportId)?.status !== "pending_review") return;
+    console.log(`[human_review] SLA expired for ${reportId} after ${slaMs}ms → CALL_CLINIC`);
+    resumeReport(reportId, { action: "override", severity: "CALL_CLINIC", reason: "Nurse review window expired", decidedBy: "system", decidedAt: new Date().toISOString() })
+      .catch((err) => console.error("[human_review] SLA resume failed", err));
+  }, slaMs));
 }
 
 export async function resumeReport(reportId: string, decision: HumanDecision) {
   const snapshot = await graph.getState(cfg(reportId));
   if (!snapshot?.next?.length) return null;
+  clearTimeout(slaTimers.get(reportId));
+  slaTimers.delete(reportId);
   await graph.invoke(new Command({ resume: decision }), cfg(reportId));
   return store().reports.get(reportId)!;
 }

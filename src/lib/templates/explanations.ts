@@ -7,9 +7,22 @@ const BY_SEVERITY: Record<Severity, string> = {
   EMERGENCY: "Call emergency services now. Do not wait.",
 };
 
-export function templateExplanation(severity: Severity): string {
-  return BY_SEVERITY[severity];
+const BY_SEVERITY_HI: Record<Severity, string> = {
+  SELF_CARE: "यह रिकवरी का सामान्य हिस्सा लगता है। अपनी योजना का पालन करते रहें और कल फिर से जाँच करें।",
+  CALL_CLINIC: "आज अपने क्लिनिक को फ़ोन करें। शायद यह गंभीर नहीं है, लेकिन उन्हें पता होना चाहिए।",
+  URGENT_CARE: "आज ही डॉक्टर को दिखाएँ। अर्जेंट केयर जाएँ, या क्लिनिक को फ़ोन करके बताएँ कि आपको आने की सलाह दी गई है।",
+  EMERGENCY: "अभी आपातकालीन सेवा को फ़ोन करें। इंतज़ार न करें।",
+};
+
+export function templateExplanation(severity: Severity, language = "en"): string {
+  return language === "hi" ? BY_SEVERITY_HI[severity] : BY_SEVERITY[severity];
 }
+
+export const NURSE_REVIEWED: Record<string, string> = { en: "A nurse reviewed your message.", hi: "एक नर्स ने आपका संदेश देखा है।" };
+export const SLA_EXPIRED: Record<string, string> = {
+  en: "A nurse was not able to review this in time. Please call your clinic so they can check in with you.",
+  hi: "नर्स समय पर इसे नहीं देख पाईं। कृपया अपने क्लिनिक को फ़ोन करें ताकि वे आपसे बात कर सकें।",
+};
 
 export const STUB_KEYWORDS: Array<[RegExp, string]> = [
   [/(spread|growing|bigger|getting worse).{0,20}(red|pink)|(red|pink).{0,30}(spread|growing|bigger)/i, "spreading_redness"],

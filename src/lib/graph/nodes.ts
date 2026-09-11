@@ -6,7 +6,7 @@ import { evaluateRules } from "@/lib/rules/evaluator";
 import { severityRank, type Finding, type Severity } from "@/lib/rules/types";
 import { store, saveReport, recoveryDayFor, type ReportRecord } from "@/lib/db/store";
 import { geminiExtract, geminiExplain, hasGemini } from "@/lib/gemini/client";
-import { templateExplanation, STUB_KEYWORDS } from "@/lib/templates/explanations";
+import { templateExplanation, STUB_KEYWORDS, NURSE_REVIEWED, SLA_EXPIRED } from "@/lib/templates/explanations";
 
 type Patch = Partial<GraphStateType>;
 
@@ -53,7 +53,8 @@ export async function extractNode(state: GraphStateType): Promise<Patch> {
     }
   }
   const out = stubExtract(state.rawText);
-  return { findings: out.findings, extractionConfidence: out.confidence, usedLlm: false };
+  // Chip intake is pre-segmented: the phrase is one of ours, so extraction confidence is not in question.
+  return { findings: out.findings, extractionConfidence: state.modality === "structured" ? 1 : out.confidence, usedLlm: false };
 }
 
 export function validateNode(state: GraphStateType): Patch {
@@ -95,25 +96,9 @@ export function triageNode(state: GraphStateType): Patch {
   return { requiresHumanReview, escalationRoute: severity === "CALL_CLINIC" ? "call_clinic" : "self_care" };
 }
 
-const SLA_MS = Number(process.env.REVIEW_SLA_MS ?? 15 * 60 * 1000);
-const slaTimers = new Map<string, NodeJS.Timeout>();
-
 export function humanReviewNode(state: GraphStateType): Patch {
   persistSnapshot(state, { status: "pending_review", requiresHuman: true });
-  if (!slaTimers.has(state.reportId)) {
-    // If no nurse decides within the SLA, the graph is resumed by the system with a safe CALL_CLINIC outcome.
-    slaTimers.set(state.reportId, setTimeout(() => {
-      slaTimers.delete(state.reportId);
-      const rec = store().reports.get(state.reportId);
-      if (!rec || rec.status !== "pending_review") return;
-      void import("./graph").then(({ resumeReport }) =>
-        resumeReport(state.reportId, { action: "override", severity: "CALL_CLINIC", reason: "Nurse review window expired", decidedBy: "system", decidedAt: new Date().toISOString() }),
-      );
-    }, SLA_MS));
-  }
   const decision = interrupt({ reason: "reassurance_needs_review", reportId: state.reportId }) as GraphStateType["humanDecision"];
-  clearTimeout(slaTimers.get(state.reportId));
-  slaTimers.delete(state.reportId);
   const severity: Severity = decision?.action === "override" && decision.severity ? decision.severity : (state.severity ?? "CALL_CLINIC");
   return { humanDecision: decision, severity, escalationRoute: severity === "CALL_CLINIC" ? "call_clinic" : severity === "SELF_CARE" ? "self_care" : severity === "EMERGENCY" ? "emergency" : "urgent_care" };
 }
@@ -121,11 +106,12 @@ export function humanReviewNode(state: GraphStateType): Patch {
 export async function explainNode(state: GraphStateType): Promise<Patch> {
   const severity = state.severity ?? "CALL_CLINIC";
   const patient = store().patients.get(state.patientId)!;
-  let explanation = templateExplanation(severity);
+  const lang = patient.language ?? "en";
+  let explanation = templateExplanation(severity, lang);
   if (state.humanDecision?.decidedBy === "system") {
-    explanation = "A nurse was not able to review this in time. Please call your clinic so they can check in with you.";
+    explanation = SLA_EXPIRED[lang] ?? SLA_EXPIRED.en;
   } else if (state.humanDecision) {
-    explanation = `A nurse reviewed your message. ${explanation}`;
+    explanation = `${NURSE_REVIEWED[lang] ?? NURSE_REVIEWED.en} ${explanation}`;
   } else if (hasGemini()) {
     try {
       explanation = await geminiExplain({ rawText: state.rawText, severity, rationale: state.rationale, procedureLabel: patient.procedureLabel, recoveryDay: state.recoveryDay, language: patient.language });

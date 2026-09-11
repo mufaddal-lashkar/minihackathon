@@ -19,7 +19,7 @@ export const CLASS1_PATTERNS: Class1Pattern[] = [
   { ruleId: "c1-calf", symptomCode: "calf_pain_with_swelling", severity: "URGENT_CARE", rationale: "Calf pain with swelling suggests deep vein thrombosis.",
     require: [/\bcalf\b/i, /(sore|swell|swollen|puffy|tender|hot|pain)/i], minMatches: 2 },
   { ruleId: "c1-bleed", symptomCode: "soaking_bleeding", severity: "URGENT_CARE", rationale: "Bleeding that soaks a dressing needs same-day assessment.",
-    require: [/(soak\w*|dripping|won'?t stop bleeding|blood running|pouring)/i, /(blood|bleed\w*|dressing|gauze|bandage)/i], minMatches: 2 },
+    require: [/(soak\w*|dripping|won'?t stop bleeding|blood running|pouring|through)/i, /(blood|bleed\w*|dressing|gauze|bandage)/i], minMatches: 2 },
   { ruleId: "c1-dehisc", symptomCode: "wound_dehiscence", severity: "URGENT_CARE", rationale: "A wound that has opened needs same-day assessment.",
     require: [/(wound|incision|stitches|staples|cut)/i, /(open\w*|split|come apart|came apart|gaping|opened up)/i], minMatches: 2 },
   { ruleId: "c1-conf", symptomCode: "confusion", severity: "EMERGENCY", rationale: "New confusion after surgery is a hard red flag.",

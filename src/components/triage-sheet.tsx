@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircleWarning, Mic, Square, X, Phone, ChevronDown, RotateCcw, UserCheck, Loader2 } from "lucide-react";
+import { MessageCircleWarning, Mic, Square, X, Phone, ChevronDown, RotateCcw, UserCheck, Loader2, Bot, Cpu, ShieldCheck, Volume2 } from "lucide-react";
 import type { ReportRecord } from "@/lib/db/store";
 import { SEVERITY_META, SeverityBadge } from "./severity";
 
@@ -30,7 +30,7 @@ export function TriageSheet({ patientId, procedureCode }: { patientId: string; p
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
   }, [open, busy]);
 
-  async function submit(raw: string, modality: "free_text" | "voice" = "free_text") {
+  async function submit(raw: string, modality: "free_text" | "voice" | "structured" = "free_text") {
     if (!raw.trim()) return;
     setBusy(true);
     setResult(null);
@@ -90,7 +90,7 @@ export function TriageSheet({ patientId, procedureCode }: { patientId: string; p
                   <p className="mt-1 text-sm text-muted-fg">Tap a common one, type, or speak. We check it against your recovery plan for today.</p>
                   <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Common symptoms">
                     {(CHIPS[procedureCode] ?? CHIPS.appendectomy).map((c) => (
-                      <button key={c} onClick={() => { setText(c); void submit(c); }} className="press min-h-11 rounded-full bg-muted px-4 text-sm font-medium text-foreground ring-1 ring-border transition-colors hover:bg-border/60">
+                      <button key={c} onClick={() => { setText(c); void submit(c, "structured"); }} className="press min-h-11 rounded-full bg-muted px-4 text-sm font-medium text-foreground ring-1 ring-border transition-colors hover:bg-border/60">
                         {c}
                       </button>
                     ))}
@@ -146,12 +146,21 @@ function ResultCard({ r, onReset }: { r: Result; onReset: () => void }) {
         <div className="flex items-start gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-600 text-white"><UserCheck size={22} aria-hidden /></span>
           <div>
-            <h3 className="font-semibold text-sky-950">A nurse is checking this</h3>
-            <p className="mt-1 text-sm text-sky-950/80">This looks like it may be okay, but we never reassure without a nurse’s eyes. Usually a few minutes — this screen updates by itself.</p>
+            <h3 className="font-semibold text-sky-950">A nurse is reviewing your check-in</h3>
+            <p className="mt-1 text-sm text-sky-950/80">We never reassure without a nurse’s eyes. This screen updates by itself — usually within a few minutes.</p>
           </div>
         </div>
-        <p className="mt-4 rounded-xl bg-white/70 p-3 text-sm text-sky-950/80">You said: “{r.rawText}”</p>
-        <p className="mt-3 text-xs text-sky-950/70">If anything gets worse while you wait, call your clinic.</p>
+        <div className="mt-4 rounded-xl bg-white p-4 ring-1 ring-red-200">
+          <p className="text-sm font-semibold text-red-900">While you wait — if ANY of these are true, call emergency services now. Do not wait for us:</p>
+          <ul className="mt-2 space-y-1.5 text-sm text-red-950">
+            {RED_FLAGS.map((f) => <li key={f} className="flex gap-2"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-sm border border-red-700" aria-hidden />{f}</li>)}
+          </ul>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <a href="tel:112" className="press flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-red-700 text-sm font-semibold text-white"><Phone size={16} aria-hidden /> Emergency</a>
+            <a href="tel:+10000000000" className="press flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-white text-sm font-semibold text-red-900 ring-1 ring-red-300"><Phone size={16} aria-hidden /> My clinic</a>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-sky-950/70">You said: “{r.rawText}”</p>
       </div>
     );
   }
@@ -165,6 +174,10 @@ function ResultCard({ r, onReset }: { r: Result; onReset: () => void }) {
       <h3 className="mt-3 text-2xl font-bold leading-tight">{m.label}</h3>
       <p className="mt-1 text-sm opacity-80">{m.action}</p>
       <p className="mt-3 text-base leading-relaxed">{r.explanation}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <AiPath r={r} />
+        <button onClick={() => speak(r.explanation ?? "")} className="inline-flex min-h-9 items-center gap-1 rounded-full bg-white/70 px-3 text-xs font-medium"><Volume2 size={14} aria-hidden /> Read aloud</button>
+      </div>
       {r.humanDecision && (
         <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-xs font-medium"><UserCheck size={14} aria-hidden /> Reviewed by a nurse</p>
       )}
@@ -187,6 +200,30 @@ function ResultCard({ r, onReset }: { r: Result; onReset: () => void }) {
       </div>
     </div>
   );
+}
+
+const RED_FLAGS = [
+  "Chest pain or trouble breathing",
+  "Bleeding that soaks through the dressing",
+  "The wound has opened, or the area is hot, red and spreading fast",
+  "Calf pain with swelling",
+  "You feel faint, or confused",
+  "Fever of 38 °C / 100.4 °F or more",
+  "You cannot pass urine",
+];
+
+function AiPath({ r }: { r: Result }) {
+  if (r.winningRuleClass === 1) return <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-medium"><ShieldCheck size={14} aria-hidden /> Red-flag rule · AI skipped</span>;
+  if (r.usedLlm) return <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-medium"><Bot size={14} aria-hidden /> Gemini read your words · rules decided</span>;
+  return <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-medium"><Cpu size={14} aria-hidden /> AI unavailable · keyword fallback · rules decided</span>;
+}
+
+function speak(text: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = /[ऀ-ॿ]/.test(text) ? "hi-IN" : "en-US";
+  window.speechSynthesis.speak(u);
 }
 
 type SpeechRecognitionLike = {

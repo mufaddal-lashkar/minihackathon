@@ -5,6 +5,7 @@ import { store, recoveryDayFor } from "@/lib/db/store";
 import { loadRules, phaseForDay } from "@/lib/rules/load-rules";
 import { TriageSheet } from "@/components/triage-sheet";
 import { SeverityBadge } from "@/components/severity";
+import { TodayTasks, HeaderTools } from "@/components/today-tasks";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,10 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
     <main id="main" className="mx-auto w-full max-w-md px-4 pb-32 pt-4">
       <div className="flex min-h-11 items-center justify-between">
         <Link href="/" className="inline-flex min-h-11 items-center gap-1 rounded-lg text-sm font-medium text-primary"><ArrowLeft size={16} aria-hidden /> Patients</Link>
-        <Link href={`/patient/${p.id}/plan`} className="inline-flex min-h-11 items-center gap-1 rounded-lg text-sm font-medium text-primary"><FileText size={16} aria-hidden /> Recovery plan</Link>
+        <div className="flex items-center gap-1">
+          <HeaderTools patientId={p.id} language={p.language} readout={`Day ${day} after your ${p.procedureLabel}. ${expected.length ? `Today you may notice ${expected.join(", ")}.` : ""} ${p.plan.map((g) => `${g.title}: ${g.items.join(". ")}`).join(". ")}`} />
+          <Link href={`/patient/${p.id}/plan`} aria-label="Recovery plan" className="flex h-11 w-11 items-center justify-center rounded-full text-primary hover:bg-muted"><FileText size={20} aria-hidden /></Link>
+        </div>
       </div>
 
       <header className="rise mt-2">
@@ -45,18 +49,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
 
       <section className="mt-6" aria-labelledby="plan-heading">
         <h2 id="plan-heading" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><ClipboardList size={14} aria-hidden /> Your plan today</h2>
-        <div className="stagger mt-2 space-y-3">
-          {p.plan.map((g) => (
-            <div key={g.title} className="rounded-2xl bg-surface p-4 ring-1 ring-border">
-              <h3 className="text-sm font-semibold">{g.title}</h3>
-              <ul className="mt-2 space-y-2 text-sm">
-                {g.items.map((it) => (
-                  <li key={it} className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />{it}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+        <TodayTasks patientId={p.id} day={day} plan={p.plan} />
       </section>
 
       {history.length > 0 && (

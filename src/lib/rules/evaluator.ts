@@ -83,7 +83,9 @@ export function evaluateRules(input: {
   }
 
   const lowConfidence = (input.extractionConfidence ?? 1) < 0.6;
-  const unmapped = (input.unmappedCount ?? 0) > 0;
+  const knownCodes = new Set(rules.rules.map((r) => r.when.symptomCode).filter(Boolean));
+  // A finding whose code no rule in this table knows about is "unmapped" - Class 4 routes it to a human.
+  const unmapped = (input.unmappedCount ?? 0) > 0 || findings.some((f) => !knownCodes.has(f.symptomCode));
   for (const r of rules.rules.filter((r) => r.class === 4)) {
     const cond = r.when.extraction ?? r.when.symptomCode ?? "";
     const fired =
