@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { CalendarDays, ClipboardList, Clock } from "lucide-react";
-import { store, recoveryDayFor } from "@/lib/db/store";
+import { store, recoveryDayFor, localizedPlan } from "@/lib/db/store";
 import { loadRules, phaseForDay } from "@/lib/rules/load-rules";
 import { TriageSheet } from "@/components/triage-sheet";
 import { SeverityBadge } from "@/components/severity";
@@ -28,16 +28,17 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
   const p = store().patients.get(id);
   if (!p) notFound();
   const lang = p.language;
+  const { procedureLabel, plan } = localizedPlan(p, lang);
   const day = recoveryDayFor(p);
   let expected: string[] = [];
   try { expected = phaseForDay(loadRules(p.procedureCode), day).expectedSymptoms.map((s) => NICE[s]?.[lang] ?? NICE[s]?.en ?? s.replace(/_/g, " ")); } catch {}
   const history = [...store().reports.values()].filter((r) => r.patientId === p.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4);
   const dateStr = new Date(p.surgeryDate).toLocaleDateString(bcp47(lang), { day: "numeric", month: "long" });
   const readout = [
-    t(lang, "dayAfter", { day, procedure: p.procedureLabel }),
+    t(lang, "dayAfter", { day, procedure: procedureLabel }),
     expected.length ? t(lang, "mayNotice", { list: expected.join(", "), day }) : "",
     t(lang, "planToday"),
-    ...p.plan.map((g) => `${g.title}. ${g.items.join(". ")}`),
+    ...plan.map((g) => `${g.title}. ${g.items.join(". ")}`),
   ].join(". ");
 
   return (
@@ -46,7 +47,7 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
         <header className="rise flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-sm font-medium text-muted-fg">{t(lang, "hello")}, {p.name.split(" ")[0]}</div>
-            <h1 className="mt-1 text-3xl font-bold leading-tight">{t(lang, "dayAfter", { day, procedure: p.procedureLabel })}</h1>
+            <h1 className="mt-1 text-3xl font-bold leading-tight">{t(lang, "dayAfter", { day, procedure: procedureLabel })}</h1>
             <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-primary"><CalendarDays size={14} aria-hidden /> {t(lang, "surgeryOn", { date: dateStr })}</div>
           </div>
           <ReadAloud text={readout} lang={lang} />
@@ -61,7 +62,7 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
 
         <section className="mt-6" aria-labelledby="plan-heading">
           <h2 id="plan-heading" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><ClipboardList size={14} aria-hidden /> {t(lang, "planToday")}</h2>
-          <TodayTasks patientId={p.id} day={day} plan={p.plan} lang={lang} />
+          <TodayTasks patientId={p.id} day={day} plan={plan} lang={lang} />
         </section>
 
         {history.length > 0 && (

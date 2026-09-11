@@ -17,7 +17,17 @@ export type Patient = {
   clinicPhone?: string;
   surgeon?: string;
   plan: { title: string; items: string[]; sourceSpans?: string[] }[];
+  // Gemini translations of the plan, keyed by language; `stamp` invalidates when the English plan changes.
+  i18n?: Record<string, { stamp: string; procedureLabel: string; plan: { title: string; items: string[] }[] }>;
 };
+
+// The plan and procedure label in the patient's language, falling back to English when no translation is cached.
+export function localizedPlan(p: Patient, lang = p.language): { procedureLabel: string; plan: { title: string; items: string[] }[] } {
+  const tr = lang !== "en" ? p.i18n?.[lang] : undefined;
+  const stamp = JSON.stringify({ l: p.procedureLabel, p: p.plan.map((g) => [g.title, g.items]) });
+  if (tr && tr.stamp === stamp) return { procedureLabel: tr.procedureLabel, plan: tr.plan };
+  return { procedureLabel: p.procedureLabel, plan: p.plan.map((g) => ({ title: g.title, items: g.items })) };
+}
 
 export type HumanDecision = {
   action: "confirm" | "override";

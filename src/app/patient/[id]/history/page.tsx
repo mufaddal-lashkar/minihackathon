@@ -7,6 +7,7 @@ import { reportsFor } from "@/lib/db/stats";
 import { seedHistory } from "@/lib/db/seed-history";
 import { t, bcp47 } from "@/lib/i18n";
 import { severityRank } from "@/lib/rules/types";
+import { templateExplanation, NURSE_REVIEWED } from "@/lib/templates/explanations";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export default async function HistoryPage({ params }: { params: Promise<{ id: st
                 </div>
                 {r.status === "pending_review" ? <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-900">{t(lang, "nurseReviewing")}</span> : r.severity && <SeverityBadge severity={r.severity} small lang={lang} />}
               </div>
-              {r.explanation && <p className="mt-2 text-sm text-muted-fg">{r.explanation}</p>}
+              {r.severity && <p className="mt-2 text-sm text-muted-fg">{r.seeded || !r.usedLlm ? `${r.humanDecision && r.humanDecision.decidedBy !== "system" ? `${NURSE_REVIEWED[lang] ?? NURSE_REVIEWED.en} ` : ""}${templateExplanation(r.severity, lang)}` : r.explanation}</p>}
             </li>
           ))}
         </ul>

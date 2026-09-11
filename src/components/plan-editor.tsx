@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { Camera, Loader2, Plus, Save, Trash2, Check, Bot, AlertCircle } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 type Group = { title: string; items: string[]; sourceSpans?: string[] };
 type P = { id: string; procedureCode: string; procedureLabel: string; surgeryDate: string; plan: Group[] };
 
-export function PlanEditor({ patient, procedures }: { patient: P; procedures: string[] }) {
+export function PlanEditor({ patient, procedures, lang = "en" }: { patient: P; procedures: string[]; lang?: string }) {
   const [plan, setPlan] = useState<Group[]>(patient.plan);
   const [procedureCode, setProcedureCode] = useState(patient.procedureCode);
   const [procedureLabel, setProcedureLabel] = useState(patient.procedureLabel);
@@ -24,7 +25,7 @@ export function PlanEditor({ patient, procedures }: { patient: P; procedures: st
       setPlan(res.draft.plan);
       if (res.draft.procedureLabel) setProcedureLabel(res.draft.procedureLabel);
       if (res.draft.surgeryDate) setSurgeryDate(res.draft.surgeryDate);
-      setNotice(res.source === "gemini" ? { kind: "ok", text: "Draft read from your photo by Gemini. Please check every line before saving." } : { kind: "warn", text: "AI reading isn’t available right now (no Gemini key or it failed), so we kept your current plan. You can still edit it by hand." });
+      setNotice(res.source === "gemini" ? { kind: "ok", text: t(lang, "draftOk") } : { kind: "warn", text: t(lang, "draftFallback") });
     }
     setBusy(null);
   }
@@ -33,7 +34,7 @@ export function PlanEditor({ patient, procedures }: { patient: P; procedures: st
     setBusy("save");
     await fetch(`/api/patients/${patient.id}/plan`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ plan, procedureCode, procedureLabel, surgeryDate }) });
     setBusy(null);
-    setNotice({ kind: "ok", text: "Plan saved. Your Today view now uses it." });
+    setNotice({ kind: "ok", text: t(lang, "planSaved") });
   }
 
   const update = (gi: number, fn: (g: Group) => Group) => setPlan((p) => p.map((g, i) => (i === gi ? fn(g) : g)));
@@ -42,7 +43,7 @@ export function PlanEditor({ patient, procedures }: { patient: P; procedures: st
     <div className="mt-5 space-y-5">
       <label className={`press flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-surface px-4 font-semibold text-primary transition-colors hover:bg-muted ${busy === "extract" ? "opacity-60" : ""}`}>
         {busy === "extract" ? <Loader2 className="animate-spin" size={20} aria-hidden /> : <Camera size={20} aria-hidden />}
-        {busy === "extract" ? "Reading your discharge sheet…" : "Photograph discharge sheet"}
+        {busy === "extract" ? t(lang, "readingSheet") : t(lang, "photographSheet")}
         <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={busy !== null} onChange={(e) => e.target.files?.[0] && extract(e.target.files[0])} />
       </label>
 
@@ -54,19 +55,19 @@ export function PlanEditor({ patient, procedures }: { patient: P; procedures: st
 
       <div className="grid gap-3 rounded-2xl bg-surface p-4 ring-1 ring-border">
         <div>
-          <label htmlFor="proc" className="text-sm font-semibold">Procedure (rule table)</label>
+          <label htmlFor="proc" className="text-sm font-semibold">{t(lang, "procedureRules")}</label>
           <select id="proc" value={procedureCode} onChange={(e) => setProcedureCode(e.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-border bg-surface px-3 text-base">
             {procedures.map((p) => <option key={p} value={p}>{p.replace(/-/g, " ")}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="label" className="text-sm font-semibold">Procedure name</label>
+          <label htmlFor="label" className="text-sm font-semibold">{t(lang, "procedureName")}</label>
           <input id="label" value={procedureLabel} onChange={(e) => setProcedureLabel(e.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-border bg-surface px-3 text-base" />
         </div>
         <div>
-          <label htmlFor="date" className="text-sm font-semibold">Surgery date</label>
+          <label htmlFor="date" className="text-sm font-semibold">{t(lang, "surgeryDate")}</label>
           <input id="date" type="date" value={surgeryDate} onChange={(e) => setSurgeryDate(e.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-border bg-surface px-3 text-base" />
-          <p className="mt-1 text-xs text-muted-fg">Recovery day is counted from here — it changes which rules apply.</p>
+          <p className="mt-1 text-xs text-muted-fg">{t(lang, "surgeryDateHint")}</p>
         </div>
       </div>
 
@@ -79,19 +80,19 @@ export function PlanEditor({ patient, procedures }: { patient: P; procedures: st
           <ul className="mt-1 space-y-1">
             {g.items.map((it, ii) => (
               <li key={ii} className="flex flex-wrap items-center gap-1">
-                {g.sourceSpans?.[ii] && <span className="basis-full pl-2 text-xs text-muted-fg">From sheet: “{g.sourceSpans[ii]}”</span>}
+                {g.sourceSpans?.[ii] && <span className="basis-full pl-2 text-xs text-muted-fg">{t(lang, "fromSheet")}: “{g.sourceSpans[ii]}”</span>}
                 <input aria-label={`${g.title} item ${ii + 1}`} value={it} onChange={(e) => update(gi, (x) => ({ ...x, items: x.items.map((v, j) => (j === ii ? e.target.value : v)) }))} className="min-h-11 flex-1 rounded-lg border border-transparent bg-transparent px-2 text-sm hover:border-border focus:border-primary" />
                 <button aria-label="Remove item" onClick={() => update(gi, (x) => ({ ...x, items: x.items.filter((_, j) => j !== ii), sourceSpans: x.sourceSpans?.filter((_, j) => j !== ii) }))} className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-fg hover:text-destructive"><Trash2 size={16} aria-hidden /></button>
               </li>
             ))}
           </ul>
-          <button onClick={() => update(gi, (x) => ({ ...x, items: [...x.items, ""] }))} className="mt-1 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-medium text-primary hover:bg-muted"><Plus size={16} aria-hidden /> Add item</button>
+          <button onClick={() => update(gi, (x) => ({ ...x, items: [...x.items, ""] }))} className="mt-1 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-medium text-primary hover:bg-muted"><Plus size={16} aria-hidden /> {t(lang, "addItem")}</button>
         </div>
       ))}
-      <button onClick={() => setPlan((p) => [...p, { title: "New section", items: [""] }])} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-medium text-primary hover:bg-muted"><Plus size={16} aria-hidden /> Add section</button>
+      <button onClick={() => setPlan((p) => [...p, { title: t(lang, "newSection"), items: [""] }])} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-medium text-primary hover:bg-muted"><Plus size={16} aria-hidden /> {t(lang, "addSection")}</button>
 
       <button onClick={save} disabled={busy !== null} className="press flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40">
-        {busy === "save" ? <Loader2 className="animate-spin" size={18} aria-hidden /> : notice?.text.startsWith("Plan saved") ? <Check size={18} aria-hidden /> : <Save size={18} aria-hidden />} Save plan
+        {busy === "save" ? <Loader2 className="animate-spin" size={18} aria-hidden /> : notice?.text === t(lang, "planSaved") ? <Check size={18} aria-hidden /> : <Save size={18} aria-hidden />} {t(lang, "savePlan")}
       </button>
     </div>
   );

@@ -44,6 +44,7 @@ export function TriageSheet({ patientId, procedureCode, lang, initialOpen }: { p
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState(false);
   const recRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => { if (!initialOpen) return; const tm = setTimeout(() => setOpen(true), 0); return () => clearTimeout(tm); }, [initialOpen]);
@@ -90,7 +91,8 @@ export function TriageSheet({ patientId, procedureCode, lang, initialOpen }: { p
     if (listening) { recRef.current?.stop(); setListening(false); return; }
     const rec = new Ctor();
     rec.lang = bcp47(lang);
-    rec.onresult = (e) => { const tr = e.results[0][0].transcript; setText(tr); setListening(false); void submit(tr, "voice"); };
+    // Fill the box so the patient can read and correct what we heard before it is submitted.
+    rec.onresult = (e) => { const tr = e.results[0][0].transcript; setText(tr); setHeard(true); setListening(false); };
     rec.onend = () => setListening(false);
     rec.start();
     recRef.current = rec;
@@ -127,9 +129,10 @@ export function TriageSheet({ patientId, procedureCode, lang, initialOpen }: { p
                     ))}
                   </div>
                   <label htmlFor="symptom-text" className="mt-5 block text-sm font-semibold">{t(lang, "inYourWords")}</label>
-                  <textarea id="symptom-text" value={text} onChange={(e) => setText(e.target.value)} placeholder={t(lang, "placeholder")} rows={3} className="mt-1.5 w-full resize-none rounded-xl border border-border bg-surface p-3 text-base focus:border-primary" />
+                  <textarea id="symptom-text" value={text} onChange={(e) => { setText(e.target.value); setHeard(false); }} placeholder={listening ? t(lang, "listening") : t(lang, "placeholder")} rows={3} className={`mt-1.5 w-full resize-none rounded-xl border bg-surface p-3 text-base focus:border-primary ${heard ? "border-primary ring-2 ring-primary/30" : "border-border"}`} />
+                  {heard && text && <p className="mt-1 text-xs font-medium text-primary" role="status">{t(lang, "reviewTranscript")}</p>}
                   <div className="mt-3 flex gap-2">
-                    <button onClick={() => submit(text)} disabled={!text.trim()} className="press min-h-12 flex-1 rounded-xl bg-primary font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40">{t(lang, "checkNow")}</button>
+                    <button onClick={() => submit(text, heard ? "voice" : "free_text")} disabled={!text.trim()} className="press min-h-12 flex-1 rounded-xl bg-primary font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40">{t(lang, "checkNow")}</button>
                     <button onClick={toggleVoice} aria-pressed={listening} className={`press inline-flex min-h-12 items-center gap-2 rounded-xl px-4 font-semibold ring-1 transition-colors ${listening ? "bg-red-50 text-red-800 ring-red-300" : "bg-surface text-primary ring-border hover:bg-muted"}`}>
                       {listening ? <><Square size={16} aria-hidden /> {t(lang, "stop")}</> : <><Mic size={18} aria-hidden /> {t(lang, "speak")}</>}
                     </button>
@@ -144,7 +147,7 @@ export function TriageSheet({ patientId, procedureCode, lang, initialOpen }: { p
                 </div>
               )}
 
-              {result && <ResultCard r={result} lang={lang} onReset={() => { setResult(null); setText(""); router.refresh(); }} />}
+              {result && <ResultCard r={result} lang={lang} onReset={() => { setResult(null); setText(""); setHeard(false); router.refresh(); }} />}
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Volume2, Square } from "lucide-react";
+import { Check, Volume2, Square, Loader2 } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { useSpeech } from "@/lib/speech";
 
@@ -50,15 +50,26 @@ export function TodayTasks({ patientId, day, plan, lang }: { patientId: string; 
 // Read-aloud with a real stop. Speaks in the patient's language when the device has a matching voice;
 // the plan text itself is in the language it was written in, so the UI strings are what get localised.
 export function ReadAloud({ text, lang, compact }: { text: string; lang: string; compact?: boolean }) {
-  const { speak, stop, speaking, supported } = useSpeech();
-  if (!supported) return null;
-  return speaking ? (
-    <button onClick={stop} className={`press inline-flex min-h-11 items-center gap-2 rounded-full bg-red-50 font-semibold text-red-800 ring-1 ring-red-200 ${compact ? "px-3 text-xs" : "px-4 text-sm"}`} aria-label={t(lang, "stopReading")}>
-      <Square size={compact ? 14 : 16} aria-hidden /> {t(lang, "stopReading")}
-    </button>
-  ) : (
-    <button onClick={() => speak(text, lang)} className={`press inline-flex min-h-11 items-center gap-2 rounded-full bg-surface font-semibold text-primary ring-1 ring-border hover:bg-muted ${compact ? "px-3 text-xs" : "px-4 text-sm"}`} aria-label={t(lang, "readAloud")}>
-      <Volume2 size={compact ? 14 : 18} aria-hidden /> {t(lang, "readAloud")}
+  const { speak, stop, state } = useSpeech();
+  const size = compact ? 14 : 18;
+  const cls = compact ? "px-3 text-xs" : "px-4 text-sm";
+  if (state === "loading") {
+    return (
+      <button onClick={stop} className={`press inline-flex min-h-11 items-center gap-2 rounded-full bg-muted font-semibold text-primary ring-1 ring-border ${cls}`} aria-live="polite">
+        <Loader2 size={size} className="animate-spin" aria-hidden /> {t(lang, "loadingAudio")}
+      </button>
+    );
+  }
+  if (state === "speaking") {
+    return (
+      <button onClick={stop} className={`press inline-flex min-h-11 items-center gap-2 rounded-full bg-red-50 font-semibold text-red-800 ring-1 ring-red-200 ${cls}`} aria-label={t(lang, "stopReading")}>
+        <Square size={size} aria-hidden /> {t(lang, "stopReading")}
+      </button>
+    );
+  }
+  return (
+    <button onClick={() => speak(text, lang)} className={`press inline-flex min-h-11 items-center gap-2 rounded-full bg-surface font-semibold text-primary ring-1 ring-border hover:bg-muted ${cls}`} aria-label={t(lang, "readAloud")}>
+      <Volume2 size={size} aria-hidden /> {t(lang, "readAloud")}
     </button>
   );
 }

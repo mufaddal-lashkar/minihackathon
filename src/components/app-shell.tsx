@@ -24,6 +24,8 @@ export function AppShell({ role, patients, patientId, pendingCount = 0, children
     if (!current || code === lang) return;
     setSavingLang(true);
     await fetch(`/api/patients/${current.id}/plan`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ language: code }) });
+    // Translate the plan itself (Gemini) so the whole page switches, not just the chrome. Cached per language.
+    if (code !== "en") await fetch(`/api/patients/${current.id}/translate`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ language: code }) }).catch(() => null);
     setSavingLang(false);
     router.refresh();
   }
@@ -55,7 +57,7 @@ export function AppShell({ role, patients, patientId, pendingCount = 0, children
       </Link>
 
       <div role="radiogroup" aria-label="Role" className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
-        {([["nurse", "Nurse", Stethoscope], ["patient", "Patient", User]] as const).map(([r, label, Icon]) => (
+        {([["nurse", role === "patient" ? t(lang, "roleNurse") : "Nurse", Stethoscope], ["patient", role === "patient" ? t(lang, "rolePatient") : "Patient", User]] as const).map(([r, label, Icon]) => (
           <button key={r} role="radio" aria-checked={role === r} onClick={() => router.push(r === "nurse" ? "/nurse" : `/patient/${pid}`)}
             className={`press flex min-h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold transition-colors ${role === r ? "bg-surface text-primary shadow-sm" : "text-muted-fg hover:text-foreground"}`}>
             <Icon size={16} aria-hidden /> {label}
@@ -65,7 +67,7 @@ export function AppShell({ role, patients, patientId, pendingCount = 0, children
 
       {role === "patient" && current && (
         <div>
-          <label htmlFor="patient-switch" className="text-xs font-semibold uppercase tracking-wide text-muted-fg">Viewing as</label>
+          <label htmlFor="patient-switch" className="text-xs font-semibold uppercase tracking-wide text-muted-fg">{t(lang, "viewingAs")}</label>
           <select id="patient-switch" value={current.id} onChange={(e) => router.push(`/patient/${e.target.value}`)} className="mt-1 min-h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm font-medium">
             {patients.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.procedureLabel}</option>)}
           </select>
@@ -90,6 +92,7 @@ export function AppShell({ role, patients, patientId, pendingCount = 0, children
       {role === "patient" && current && (
         <div>
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-fg"><Languages size={14} aria-hidden /> {t(lang, "language")}</div>
+          {savingLang && <p className="mt-1 text-xs text-primary" role="status">{t(lang, "translating")}</p>}
           <div role="radiogroup" aria-label="Language" className="mt-1 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
             {LANGS.map((l) => (
               <button key={l.code} role="radio" aria-checked={lang === l.code} disabled={savingLang} onClick={() => setLang(l.code)} lang={l.bcp47}
