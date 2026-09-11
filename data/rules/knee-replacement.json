@@ -1,0 +1,133 @@
+{
+  "procedureCode": "knee-replacement",
+  "phases": [
+    {
+      "name": "early",
+      "dayStart": 0,
+      "dayEnd": 5,
+      "expectedSymptoms": ["mild_swelling", "mild_incisional_pain", "low_grade_temp"],
+      "redFlags": ["fever_38", "wound_dehiscence", "soaking_bleeding", "calf_pain_with_swelling"]
+    },
+    {
+      "name": "healing",
+      "dayStart": 6,
+      "dayEnd": 14,
+      "expectedSymptoms": ["mild_swelling", "mild_incisional_pain"],
+      "redFlags": ["fever_38", "wound_dehiscence", "soaking_bleeding", "calf_pain_with_swelling", "wound_drainage"]
+    }
+  ],
+  "rules": [
+    {
+      "id": "knee-2-001",
+      "class": 2,
+      "when": { "symptomCode": "mild_swelling", "phase": "early" },
+      "severity": "SELF_CARE",
+      "route": "self_care",
+      "rationale": "Mild swelling is expected on days 0-5 after knee replacement."
+    },
+    {
+      "id": "knee-2-002",
+      "class": 2,
+      "when": { "symptomCode": "mild_swelling", "phase": "healing" },
+      "severity": "SELF_CARE",
+      "route": "self_care",
+      "rationale": "Mild swelling is expected through day 14 after knee replacement."
+    },
+    {
+      "id": "knee-2-003",
+      "class": 2,
+      "when": { "symptomCode": "mild_incisional_pain", "phase": "early" },
+      "severity": "SELF_CARE",
+      "route": "self_care",
+      "rationale": "Mild incisional pain is expected on days 0-5 after knee replacement."
+    },
+    {
+      "id": "knee-2-004",
+      "class": 2,
+      "when": { "symptomCode": "mild_incisional_pain", "phase": "healing" },
+      "severity": "SELF_CARE",
+      "route": "self_care",
+      "rationale": "Mild incisional pain is expected through day 14 after knee replacement."
+    },
+    {
+      "id": "knee-2-005",
+      "class": 2,
+      "when": { "symptomCode": "low_grade_temp", "phase": "early" },
+      "severity": "SELF_CARE",
+      "route": "self_care",
+      "rationale": "Low-grade temperature is expected on days 0-5 after knee replacement."
+    },
+    {
+      "id": "knee-2-006",
+      "class": 2,
+      "when": { "symptomCode": "decreased_rom", "phase": "healing" },
+      "severity": "CALL_CLINIC",
+      "route": "call_clinic",
+      "rationale": "Decreased range of motion at day 7 or later is not expected; needs clinic review."
+    },
+    {
+      "id": "knee-2-007",
+      "class": 2,
+      "when": { "symptomCode": "wound_drainage", "phase": "early" },
+      "severity": "CALL_CLINIC",
+      "route": "call_clinic",
+      "rationale": "Wound drainage in the first five days needs clinic review."
+    },
+    {
+      "id": "knee-2-008",
+      "class": 2,
+      "when": { "symptomCode": "wound_drainage", "phase": "healing" },
+      "severity": "URGENT_CARE",
+      "route": "urgent_care",
+      "rationale": "Wound drainage past day 5 suggests infection or dehiscence; urgent review."
+    },
+    {
+      "id": "knee-3-001",
+      "class": 3,
+      "when": { "patientFlag": "anticoagulated", "symptomCode": "bleeding" },
+      "severity": "URGENT_CARE",
+      "route": "urgent_care",
+      "rationale": "Anticoagulated patient with any bleeding escalates one level."
+    },
+    {
+      "id": "knee-3-002",
+      "class": 3,
+      "when": { "patientFlag": "diabetic", "symptomCode": "wound_redness" },
+      "severity": "URGENT_CARE",
+      "route": "urgent_care",
+      "rationale": "Diabetic patient with wound redness escalates one level."
+    },
+    {
+      "id": "knee-3-003",
+      "class": 3,
+      "when": { "patientFlag": "age_70_plus", "symptomCode": "new_confusion" },
+      "severity": "EMERGENCY",
+      "route": "emergency",
+      "rationale": "Age 70 or over with new confusion escalates; confusion is a hard red flag in this band."
+    },
+    {
+      "id": "knee-4-001",
+      "class": 4,
+      "when": { "extraction": "no_findings" },
+      "severity": "CALL_CLINIC",
+      "route": "human_review",
+      "rationale": "No findings extracted; route to human review rather than reassure."
+    },
+    {
+      "id": "knee-4-002",
+      "class": 4,
+      "when": { "extraction": "finding_unmapped_to_symptom_code" },
+      "severity": "CALL_CLINIC",
+      "route": "human_review",
+      "rationale": "A finding could not be mapped to a symptom code; human review decides."
+    },
+    {
+      "id": "knee-4-003",
+      "class": 4,
+      "when": { "extraction": "low_extraction_confidence" },
+      "severity": "CALL_CLINIC",
+      "route": "human_review",
+      "rationale": "Extraction confidence is low; human review decides rather than the rule engine."
+    }
+  ]
+}
