@@ -16,6 +16,9 @@ npm run dev
 - `/` — pick a demo patient (appendectomy day 4, knee replacement day 6 on anticoagulants + diabetic, C-section day 3)
 - `/patient/:id` — Today view + "Something feels off?" sheet (chips, free text, voice)
 - `/nurse` — inbox: pending reassurances (interrupted graph, awaiting confirm/override) and auto-sent escalations, with the full fired / not-fired rule table
+- `/patient/:id/plan` — photograph the discharge sheet → Gemini (multimodal) drafts the plan → edit → save. Also sets procedure (rule table) and surgery date.
+
+Persistence: `node:sqlite` file at `data/recoverwell.db` (created on first run, gitignored). Nurse SLA: a pending review with no decision after `REVIEW_SLA_MS` (default 15 min) is resumed by the system as CALL_CLINIC — never SELF_CARE.
 
 ## Pipeline (LangGraph JS)
 
