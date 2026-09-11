@@ -102,6 +102,22 @@ export const SEED_PATIENTS: Patient[] = [
     },
 ];
 
+// Pre-generated Gemini translations of the demo plans (data/seed-i18n.json) so switching language is instant
+// and needs no API call. Only applied when the English plan still matches the stamp the translation was made from.
+function applySeedI18n(p: Patient) {
+  try {
+    const file = path.join(process.cwd(), "data", "seed-i18n.json");
+    if (!fs.existsSync(file)) return;
+    const seed = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, NonNullable<Patient["i18n"]>>;
+    const mine = seed[p.id];
+    if (!mine) return;
+    const stamp = JSON.stringify({ l: p.procedureLabel, p: p.plan.map((g) => [g.title, g.items]) });
+    for (const [lang, tr] of Object.entries(mine)) {
+      if (tr.stamp === stamp && !p.i18n?.[lang]) p.i18n = { ...(p.i18n ?? {}), [lang]: tr };
+    }
+  } catch {}
+}
+
 function openDb(): DatabaseSync {
   const file = process.env.RECOVERWELL_DB ?? path.join(process.cwd(), "data", "recoverwell.db");
   if (file !== ":memory:") fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -121,11 +137,12 @@ function init(): Store {
     // Backfill fields added after the row was first written (demo DB may predate them).
     const seed = SEED_PATIENTS.find((x) => x.id === p.id);
     if (seed) for (const k of ["phone", "clinicPhone", "surgeon"] as const) if (!p[k]) p[k] = seed[k];
+    applySeedI18n(p);
     patients.set(p.id, p);
   }
   if (patients.size === 0) {
     const ins = db.prepare("INSERT OR REPLACE INTO patients (id, json) VALUES (?, ?)");
-    for (const p of SEED_PATIENTS) { ins.run(p.id, JSON.stringify(p)); patients.set(p.id, p); }
+    for (const p of SEED_PATIENTS) { applySeedI18n(p); ins.run(p.id, JSON.stringify(p)); patients.set(p.id, p); }
   }
   const reports = new Map<string, ReportRecord>();
   for (const row of db.prepare("SELECT json FROM reports ORDER BY created_at").all() as { json: string }[]) {

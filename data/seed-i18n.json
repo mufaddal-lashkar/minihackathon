@@ -1,0 +1,148 @@
+{
+  "p-fatima": {
+    "hi": {
+      "stamp": "{\"l\":\"Caesarean section\",\"p\":[[\"Wound care\",[\"Keep incision clean and dry\",\"Wear loose high-waisted clothing\"]],[\"Recovery\",[\"Rest when baby rests\",\"No driving for 6 weeks\",\"No lifting heavier than baby\"]],[\"Medication\",[\"Paracetamol 1 g every 6h\",\"Ibuprofen 400 mg every 8h with food\"]]]}",
+      "procedureLabel": "सिजेरियन सेक्शन",
+      "plan": [
+        {
+          "title": "घाव की देखभाल",
+          "items": [
+            "टांके वाली जगह को साफ और सूखा रखें",
+            "ढीले और कमर से ऊंचे कपड़े पहनें"
+          ]
+        },
+        {
+          "title": "रिकवरी",
+          "items": [
+            "जब बच्चा सोए तब आप भी आराम करें",
+            "6 सप्ताह तक गाड़ी न चलाएं",
+            "बच्चे से ज्यादा भारी चीज़ न उठाएं"
+          ]
+        },
+        {
+          "title": "दवाइयां",
+          "items": [
+            "Paracetamol 1 g हर 6 घंटे में",
+            "Ibuprofen 400 mg हर 8 घंटे में खाने के साथ"
+          ]
+        }
+      ]
+    },
+    "gu": {
+      "stamp": "{\"l\":\"Caesarean section\",\"p\":[[\"Wound care\",[\"Keep incision clean and dry\",\"Wear loose high-waisted clothing\"]],[\"Recovery\",[\"Rest when baby rests\",\"No driving for 6 weeks\",\"No lifting heavier than baby\"]],[\"Medication\",[\"Paracetamol 1 g every 6h\",\"Ibuprofen 400 mg every 8h with food\"]]]}",
+      "procedureLabel": "સીઝેરિયન સેક્શન",
+      "plan": [
+        {
+          "title": "ઘાની સંભાળ",
+          "items": [
+            "કાપની જગ્યા ચોખ્ખી અને સૂકી રાખો",
+            "ઢીલા અને કમરથી ઉપરના ઊંચા કપડાં પહેરો"
+          ]
+        },
+        {
+          "title": "રિકવરી (સાજા થવું)",
+          "items": [
+            "જ્યારે બાળક આરામ કરે ત્યારે તમે પણ આરામ કરો",
+            "6 અઠવાડિયા સુધી ગાડી ચલાવવી નહીં",
+            "બાળક કરતાં વધુ વજનદાર વસ્તુ ઊંચકવી નહીં"
+          ]
+        },
+        {
+          "title": "દવાઓ",
+          "items": [
+            "Paracetamol 1 g દર 6h કલાકે",
+            "Ibuprofen 400 mg દર 8h કલાકે ખોરાક સાથે"
+          ]
+        }
+      ]
+    }
+  },
+  "p-asha": {
+    "gu": {
+      "stamp": "{\"l\":\"Laparoscopic appendectomy\",\"p\":[[\"Wound care\",[\"Keep dressing dry for 48h\",\"Shower from day 2, pat dry\",\"No baths or swimming for 2 weeks\"]],[\"Activity\",[\"Short walks 3× daily\",\"No lifting over 5 kg for 2 weeks\"]],[\"Medication\",[\"Paracetamol 1 g every 6h as needed\",\"Ibuprofen 400 mg with food if needed\"]]]}",
+      "procedureLabel": "લેપ્રોસ્કોપિક એપેન્ડેક્ટોમી",
+      "plan": [
+        {
+          "title": "ઘાવની સંભાળ",
+          "items": [
+            "48 કલાક સુધી ડ્રેસિંગ કોરું રાખો",
+            "બીજા દિવસથી ન્હાવાનું શરૂ કરો, હળવા હાથે લૂછી લો",
+            "2 અઠવાડિયા સુધી ટબ બાથ કે સ્વિમિંગ કરવું નહીં"
+          ]
+        },
+        {
+          "title": "પ્રવૃત્તિ",
+          "items": [
+            "દરરોજ 3 વખત ટૂંકા અંતર માટે ચાલો",
+            "2 અઠવાડિયા સુધી 5 કિલોથી વધુ વજન ઊંચકવું નહીં"
+          ]
+        },
+        {
+          "title": "દવાઓ",
+          "items": [
+            "જરૂર પડે તો દર 6 કલાકે Paracetamol 1 g લો",
+            "જરૂર પડે તો ખોરાક સાથે Ibuprofen 400 mg લો"
+          ]
+        }
+      ]
+    }
+  },
+  "p-ravi": {
+    "hi": {
+      "stamp": "{\"l\":\"Total knee replacement (right)\",\"p\":[[\"Mobility\",[\"Physio exercises 3× daily\",\"Walk with frame, weight-bear as tolerated\",\"Ice 20 min after exercise\"]],[\"Medication\",[\"Apixaban 2.5 mg twice daily (blood thinner)\",\"Paracetamol 1 g every 6h\"]],[\"Wound care\",[\"Keep dressing on until clinic visit day 10\",\"Report any leaking\"]]]}",
+      "procedureLabel": "दाहिने घुटने का पूरा रिप्लेसमेंट (Total knee replacement)",
+      "plan": [
+        {
+          "title": "चलना-फिरना",
+          "items": [
+            "दिन में 3× फिजियो कसरत (Physio exercises)",
+            "फ्रेम के सहारे चलें, पैर पर उतना ही वजन डालें जितना सहन हो सके",
+            "कसरत के बाद 20 min बर्फ से सिकाई करें"
+          ]
+        },
+        {
+          "title": "दवाइयां",
+          "items": [
+            "Apixaban 2.5 mg दिन में दो बार (खून पतला करने की दवा)",
+            "Paracetamol 1 g हर 6h में"
+          ]
+        },
+        {
+          "title": "घाव की देखभाल",
+          "items": [
+            "10वें दिन क्लिनिक जाने तक पट्टी को लगा रहने दें",
+            "अगर घाव या पट्टी से कोई रिसाव हो, तो तुरंत सूचित करें"
+          ]
+        }
+      ]
+    },
+    "gu": {
+      "stamp": "{\"l\":\"Total knee replacement (right)\",\"p\":[[\"Mobility\",[\"Physio exercises 3× daily\",\"Walk with frame, weight-bear as tolerated\",\"Ice 20 min after exercise\"]],[\"Medication\",[\"Apixaban 2.5 mg twice daily (blood thinner)\",\"Paracetamol 1 g every 6h\"]],[\"Wound care\",[\"Keep dressing on until clinic visit day 10\",\"Report any leaking\"]]]}",
+      "procedureLabel": "જમણા ઘૂંટણનું આખું રિપ્લેસમેન્ટ (Total knee replacement)",
+      "plan": [
+        {
+          "title": "હલનચલન",
+          "items": [
+            "દિવસમાં 3× ફિઝિયોથેરાપીની કસરતો કરવી",
+            "ફ્રેમ (વોકર) સાથે ચાલવું, સહન થાય તેટલો પગ પર વજન આપવો",
+            "કસરત કર્યા પછી 20 min બરફનો શેક કરવો"
+          ]
+        },
+        {
+          "title": "દવાઓ",
+          "items": [
+            "Apixaban 2.5 mg દિવસમાં બે વાર (લોહી પાતળું કરવાની દવા)",
+            "Paracetamol 1 g દર 6h એ લેવી"
+          ]
+        },
+        {
+          "title": "ઘા ની સંભાળ",
+          "items": [
+            "10 માં દિવસની ક્લિનિક મુલાકાત સુધી પાટો (ડ્રેસિંગ) એમનેમ રાખવો",
+            "જો ઘામાંથી કંઈ પણ ઝરતું (લીક થતું) જણાય, તો તરત જ જાણ કરવી"
+          ]
+        }
+      ]
+    }
+  }
+}

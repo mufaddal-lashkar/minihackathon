@@ -22,8 +22,20 @@ const ExtractionSchema = z.object({
   confidence: z.number().min(0).max(1).describe("0-1. Low (<0.6) when the text is vague, unrelated to post-op recovery, or you had to guess."),
 });
 
+// One or many keys: GEMINI_API_KEYS="k1,k2,k3" (round-robin, spreads free-tier rate limits) or a single GEMINI_API_KEY.
+export function geminiKeys(): string[] {
+  const many = (process.env.GEMINI_API_KEYS ?? "").split(",").map((k) => k.trim()).filter(Boolean);
+  const one = process.env.GEMINI_API_KEY?.trim();
+  return many.length ? many : one ? [one] : [];
+}
 export function hasGemini() {
-  return Boolean(process.env.GEMINI_API_KEY);
+  return geminiKeys().length > 0;
+}
+const rr = globalThis as unknown as { __geminiRr?: number };
+function nextKey(): string {
+  const keys = geminiKeys();
+  rr.__geminiRr = ((rr.__geminiRr ?? -1) + 1) % keys.length;
+  return keys[rr.__geminiRr];
 }
 
 // Free-tier quotas are per model (and per minute). Try the configured model first, then fall through the chain.
@@ -31,6 +43,9 @@ export function hasGemini() {
 // The whole chain shares ONE deadline — a slow request must never stack timeouts model after model.
 const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
 const COOLDOWN_MS = 60 * 1000;
+const DAILY_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+// Google's 429 body says which quota tripped: a per-minute one clears in seconds, a per-day one won't come back today.
+const cooldownFor = (msg: string) => (/PerDay/i.test(msg) ? DAILY_COOLDOWN_MS : COOLDOWN_MS);
 const g = globalThis as unknown as { __geminiCooldown?: Map<string, number> };
 const cooldown = (g.__geminiCooldown ??= new Map<string, number>());
 
@@ -39,41 +54,47 @@ function modelChain(): string[] {
   return [primary, ...FALLBACK_MODELS.filter((m) => m !== primary)];
 }
 
-function llm(modelName: string, temperature = 0) {
-  return new ChatGoogleGenerativeAI({ model: modelName, apiKey: process.env.GEMINI_API_KEY, temperature, maxRetries: 0 });
+function llm(modelName: string, temperature = 0, apiKey = nextKey()) {
+  return new ChatGoogleGenerativeAI({ model: modelName, apiKey, temperature, maxRetries: 0 });
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("gemini_timeout")), ms))]);
 }
 
-async function withFallback<T>(fn: (modelName: string) => Promise<T>, budgetMs: number): Promise<T> {
+async function withFallback<T>(fn: (modelName: string, apiKey: string) => Promise<T>, budgetMs: number): Promise<T> {
   if (!hasGemini()) throw new Error("gemini_not_configured");
   const deadline = Date.now() + budgetMs;
+  const keys = geminiKeys();
   let lastErr: unknown = new Error("gemini_all_models_cooling_down");
+  // Every (model, key) pair is a separate quota bucket; walk models, and within a model rotate keys.
   for (const m of modelChain()) {
-    if ((cooldown.get(m) ?? 0) > Date.now()) continue;
-    const left = deadline - Date.now();
-    if (left < 1500) break;
-    try {
-      return await withTimeout(fn(m), left);
-    } catch (err) {
-      lastErr = err;
-      const msg = String((err as Error).message ?? err);
-      if (/429|404|503|quota|not found|not available|high demand/i.test(msg)) {
-        cooldown.set(m, Date.now() + COOLDOWN_MS);
-        console.warn(`[gemini] ${m} unavailable (${/\[(\d{3})[^\]]*\]/.exec(msg)?.[1] ?? msg.slice(0, 40)}) — trying next model`);
-        continue;
+    for (let i = 0; i < keys.length; i++) {
+      const key = nextKey();
+      const slot = `${m}|${key.slice(-6)}`;
+      if ((cooldown.get(slot) ?? 0) > Date.now()) continue;
+      const left = deadline - Date.now();
+      if (left < 1500) throw lastErr;
+      try {
+        return await withTimeout(fn(m, key), left);
+      } catch (err) {
+        lastErr = err;
+        const msg = String((err as Error).message ?? err);
+        if (/429|404|503|quota|not found|not available|high demand/i.test(msg)) {
+          cooldown.set(slot, Date.now() + cooldownFor(msg));
+          console.warn(`[gemini] ${slot} unavailable (${/\[(\d{3})[^\]]*\]/.exec(msg)?.[1] ?? msg.slice(0, 40)}) — trying next`);
+          continue;
+        }
+        throw err;
       }
-      throw err;
     }
   }
   throw lastErr;
 }
 
 export async function geminiExtract(rawText: string, procedureCode: string, recoveryDay: number): Promise<{ findings: Finding[]; confidence: number }> {
-  const out = await withFallback((m) =>
-    llm(m).withStructuredOutput(ExtractionSchema, { name: "extract_findings" }).invoke([
+  const out = await withFallback((m, k) =>
+    llm(m, 0, k).withStructuredOutput(ExtractionSchema, { name: "extract_findings" }).invoke([
       ["system", `You extract clinical findings from a post-operative patient's message. Procedure: ${procedureCode}, recovery day ${recoveryDay}.
 The message may be in English, Hindi or Gujarati (any script). Return one finding per distinct symptom the patient CLEARLY describes.
 For each, sourceSpan MUST be an exact verbatim substring of the patient's text.
@@ -87,8 +108,8 @@ Map: pink/red/redder wound → wound_redness; spreading/growing redness → spre
 }
 
 export async function geminiExplain(input: { rawText: string; severity: Severity; rationale: string; procedureLabel: string; recoveryDay: number; language: string }): Promise<string> {
-  const res = await withFallback((m) =>
-    llm(m, 0.3).invoke([
+  const res = await withFallback((m, k) =>
+    llm(m, 0.3, k).invoke([
       ["system", `You write a short, warm, plain-language message (max 3 sentences, reading age 12) to a patient recovering from ${input.procedureLabel}, day ${input.recoveryDay}.
 The decision has ALREADY been made by a clinical rule engine: severity = ${input.severity}. Reason: ${input.rationale}.
 Your job is ONLY to phrase this. Do not change, soften, or upgrade the advice. Do not add new medical advice. Do not diagnose.
@@ -109,8 +130,8 @@ const PlanSchema = z.object({
 export type PlanDraft = z.infer<typeof PlanSchema>;
 
 export async function geminiExtractPlan(base64: string, mimeType: string): Promise<PlanDraft> {
-  return withFallback((m) =>
-    llm(m).withStructuredOutput(PlanSchema, { name: "extract_plan" }).invoke([
+  return withFallback((m, k) =>
+    llm(m, 0, k).withStructuredOutput(PlanSchema, { name: "extract_plan" }).invoke([
       ["system", "You read a photo of a hospital discharge instruction sheet and transcribe it into a structured recovery plan. Copy instructions faithfully; do not invent items. Group under short titles. Return only what is on the sheet."],
       ["human", [{ type: "text", text: "Transcribe this discharge sheet." }, { type: "image_url", image_url: `data:${mimeType};base64,${base64}` }]],
     ]), 45000);
@@ -123,29 +144,53 @@ const TranslationSchema = z.object({
 export type PlanTranslation = z.infer<typeof TranslationSchema>;
 
 export async function geminiTranslatePlan(input: { procedureLabel: string; plan: { title: string; items: string[] }[]; language: string }): Promise<PlanTranslation> {
-  return withFallback((m) =>
-    llm(m).withStructuredOutput(TranslationSchema, { name: "translate_plan" }).invoke([
+  return withFallback((m, k) =>
+    llm(m, 0, k).withStructuredOutput(TranslationSchema, { name: "translate_plan" }).invoke([
       ["system", `Translate this patient's post-operative recovery plan into ${LANG_NAME[input.language as Lang] ?? "English"}. Keep the same structure, order and number of items. Keep medication names, doses and numbers unchanged. Use simple everyday words a patient would understand. Output only the translation.`],
       ["human", JSON.stringify({ procedureLabel: input.procedureLabel, plan: input.plan })],
     ]), 20000);
 }
 
 // Text-to-speech via the Gemini TTS model (raw 16-bit PCM @ 24 kHz), wrapped into a WAV so browsers can play it directly.
+// The TTS free tier is tiny (10 requests/day per model per project), so we walk every TTS model × every key,
+// and remember which (model,key) pairs are exhausted for the day.
+const TTS_MODELS = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"];
 export async function geminiTts(text: string, language: string): Promise<Buffer> {
   if (!hasGemini()) throw new Error("gemini_not_configured");
-  const modelName = process.env.GEMINI_TTS_MODEL ?? "gemini-3.1-flash-tts-preview";
+  const primary = process.env.GEMINI_TTS_MODEL ?? TTS_MODELS[0];
+  const models = [primary, ...TTS_MODELS.filter((m) => m !== primary)];
   const langName = LANG_NAME[language as Lang] ?? "English";
   const body = {
     contents: [{ parts: [{ text: `Read the following ${langName} text aloud clearly and calmly for a patient, at a slightly slow pace:\n\n${text}` }] }],
     generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: process.env.GEMINI_TTS_VOICE ?? "Kore" } } } },
   };
-  const res = await withTimeout(
-    fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
-    }),
-    30000,
-  );
-  if (!res.ok) throw new Error(`tts_${res.status}`);
+  const keys = geminiKeys();
+  let lastStatus = "no_response";
+  let res: Response | null = null;
+  outer: for (const modelName of models) {
+    for (let i = 0; i < keys.length; i++) {
+      const key = nextKey();
+      const slot = `tts:${modelName}|${key.slice(-6)}`;
+      if ((cooldown.get(slot) ?? 0) > Date.now()) continue;
+      res = await withTimeout(
+        fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`, {
+          method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+        }),
+        30000,
+      );
+      if (res.ok) break outer;
+      lastStatus = String(res.status);
+      const errText = await res.text().catch(() => "");
+      if (res.status === 429 || res.status === 503 || res.status === 404) {
+        cooldown.set(slot, Date.now() + cooldownFor(errText));
+        console.warn(`[tts] ${slot} unavailable (${res.status}${/PerDay/.test(errText) ? ", daily quota" : ""}) — trying next`);
+        res = null;
+        continue;
+      }
+      throw new Error(`tts_${res.status}`);
+    }
+  }
+  if (!res || !res.ok) throw new Error(`tts_${lastStatus}`);
   const json = (await res.json()) as { candidates?: { content?: { parts?: { inlineData?: { mimeType: string; data: string } }[] } }[] };
   const part = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData)?.inlineData;
   if (!part) throw new Error("tts_no_audio");

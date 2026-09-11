@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Volume2, Square, Loader2 } from "lucide-react";
 import { t } from "@/lib/i18n";
-import { useSpeech } from "@/lib/speech";
+import { useSpeech, prefetchSpeech } from "@/lib/speech";
 
 type Group = { title: string; items: string[] };
 
@@ -51,6 +51,8 @@ export function TodayTasks({ patientId, day, plan, lang }: { patientId: string; 
 // the plan text itself is in the language it was written in, so the UI strings are what get localised.
 export function ReadAloud({ text, lang, compact }: { text: string; lang: string; compact?: boolean }) {
   const { speak, stop, state } = useSpeech();
+  // Start generating the audio as soon as the text is on screen, so the button plays instantly.
+  useEffect(() => { const tm = setTimeout(() => { void prefetchSpeech(text, lang); }, 400); return () => clearTimeout(tm); }, [text, lang]);
   const size = compact ? 14 : 18;
   const cls = compact ? "px-3 text-xs" : "px-4 text-sm";
   if (state === "loading") {
