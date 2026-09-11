@@ -1,42 +1,71 @@
 import Link from "next/link";
+import { ArrowRight, ShieldCheck, Stethoscope, Sparkles, ChevronRight } from "lucide-react";
 import { store, recoveryDayFor } from "@/lib/db/store";
+import { TopBar } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
 
 export default function Home() {
   const patients = [...store().patients.values()];
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-10">
-      <header className="mb-10">
-        <div className="text-teal-700 font-semibold tracking-wide text-sm uppercase">RecoverWell</div>
-        <h1 className="mt-2 text-3xl font-bold">Post-operative recovery triage</h1>
-        <p className="mt-2 text-teal-900/70 max-w-xl">
-          Severity is decided by a deterministic rule table. The AI only reads what you wrote and phrases the answer — it never
-          decides how urgent it is. Uncertain reassurances go to a nurse before you see them.
-        </p>
-      </header>
+    <>
+      <TopBar active="patients" />
+      <main id="main" className="mx-auto w-full max-w-6xl px-4 py-10">
+        <section className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+          <div className="rise">
+            <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-primary"><ShieldCheck size={14} aria-hidden /> Rules decide. AI only explains.</span>
+            <h1 className="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Post-operative recovery, triaged safely.</h1>
+            <p className="mt-4 max-w-xl text-lg text-muted-fg">
+              Patients describe what they notice. A deterministic rule table decides how urgent it is. Gemini only reads their words and phrases the answer — and every reassurance passes a nurse first.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href={`/patient/${patients[0]?.id}`} className="press inline-flex min-h-12 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-on-primary transition-colors hover:bg-primary-hover">
+                Try the patient app <ArrowRight size={18} aria-hidden />
+              </Link>
+              <Link href="/nurse" className="press inline-flex min-h-12 items-center gap-2 rounded-xl bg-surface px-5 font-semibold text-primary ring-1 ring-border transition-colors hover:bg-muted">
+                <Stethoscope size={18} aria-hidden /> Nurse inbox
+              </Link>
+            </div>
+          </div>
+          <ul className="stagger grid gap-3 text-sm">
+            {[
+              ["Class 1 red flags", "Caught by a regex pre-filter before any LLM call. Chest pain escalates even if Gemini is down."],
+              ["Class 2 expectations", "Procedure- and day-specific rules from a JSON table. Clear fluid on day 2 is normal; on day 10 it is a clinic call."],
+              ["Nurse gate on reassurance", "SELF_CARE / CALL_CLINIC pauses the graph (LangGraph interrupt) until a nurse confirms or overrides."],
+            ].map(([t, d]) => (
+              <li key={t} className="rounded-2xl bg-surface p-4 ring-1 ring-border">
+                <div className="flex items-center gap-2 font-semibold"><Sparkles size={16} className="text-primary" aria-hidden /> {t}</div>
+                <p className="mt-1 text-muted-fg">{d}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      <section>
-        <h2 className="text-sm font-semibold text-teal-800 uppercase tracking-wide mb-3">Demo patients</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {patients.map((p) => (
-            <Link key={p.id} href={`/patient/${p.id}`} className="rise rounded-2xl bg-white p-5 ring-1 ring-teal-100 shadow-sm hover:shadow-md hover:ring-teal-300 transition">
-              <div className="text-lg font-semibold">{p.name}</div>
-              <div className="text-sm text-teal-900/70">{p.procedureLabel}</div>
-              <div className="mt-3 inline-block rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-800">Day {recoveryDayFor(p)} of recovery</div>
-              <div className="mt-2 text-xs text-teal-900/50">
-                Age {p.ageBand}{p.anticoagulated ? " · on blood thinners" : ""}{p.comorbidities.length ? ` · ${p.comorbidities.join(", ")}` : ""}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <Link href="/nurse" className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-white font-semibold hover:bg-teal-800 transition">
-          Open nurse inbox →
-        </Link>
-      </section>
-    </main>
+        <section className="mt-12">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">Demo patients</h2>
+          <ul className="stagger mt-3 grid gap-3 sm:grid-cols-3">
+            {patients.map((p) => (
+              <li key={p.id}>
+                <Link href={`/patient/${p.id}`} className="press group flex h-full flex-col rounded-2xl bg-surface p-5 ring-1 ring-border transition hover:shadow-md hover:ring-primary/40">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-lg font-semibold">{p.name}</div>
+                      <div className="text-sm text-muted-fg">{p.procedureLabel}</div>
+                    </div>
+                    <ChevronRight size={18} className="mt-1 text-muted-fg transition group-hover:translate-x-0.5 group-hover:text-primary" aria-hidden />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full bg-muted px-2.5 py-1 font-semibold text-primary">Day {recoveryDayFor(p)}</span>
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-muted-fg">Age {p.ageBand}</span>
+                    {p.anticoagulated && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-900">Anticoagulated</span>}
+                    {p.comorbidities.map((c) => <span key={c} className="rounded-full bg-amber-100 px-2.5 py-1 capitalize text-amber-900">{c}</span>)}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </main>
+    </>
   );
 }

@@ -72,3 +72,22 @@ Write in language code "${input.language}". Output plain text only.`],
   if (!text.trim()) throw new Error("gemini_empty");
   return text.trim();
 }
+
+const PlanSchema = z.object({
+  procedureLabel: z.string().describe("Name of the surgery as written on the sheet"),
+  surgeryDate: z.string().optional().describe("ISO date YYYY-MM-DD if present"),
+  plan: z.array(z.object({ title: z.string(), items: z.array(z.string()) })).describe("Instruction groups, e.g. Wound care, Activity, Medication, Follow-up"),
+});
+export type PlanDraft = z.infer<typeof PlanSchema>;
+
+export async function geminiExtractPlan(base64: string, mimeType: string): Promise<PlanDraft> {
+  if (!hasGemini()) throw new Error("gemini_not_configured");
+  const llm = model().withStructuredOutput(PlanSchema, { name: "extract_plan" });
+  return withTimeout(
+    llm.invoke([
+      ["system", "You read a photo of a hospital discharge instruction sheet and transcribe it into a structured recovery plan. Copy instructions faithfully; do not invent items. Group under short titles. Return only what is on the sheet."],
+      ["human", [{ type: "text", text: "Transcribe this discharge sheet." }, { type: "image_url", image_url: `data:${mimeType};base64,${base64}` }]],
+    ]),
+    20000,
+  );
+}

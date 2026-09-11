@@ -22,10 +22,10 @@ export const CLASS1_PATTERNS: Class1Pattern[] = [
     require: [/(soak\w*|dripping|won'?t stop bleeding|blood running|pouring)/i, /(blood|bleed\w*|dressing|gauze|bandage)/i], minMatches: 2 },
   { ruleId: "c1-dehisc", symptomCode: "wound_dehiscence", severity: "URGENT_CARE", rationale: "A wound that has opened needs same-day assessment.",
     require: [/(wound|incision|stitches|staples|cut)/i, /(open\w*|split|come apart|came apart|gaping|opened up)/i], minMatches: 2 },
-  { ruleId: "c1-conf", symptomCode: "confusion", severity: "URGENT_CARE", rationale: "New confusion after surgery needs same-day assessment.",
+  { ruleId: "c1-conf", symptomCode: "confusion", severity: "EMERGENCY", rationale: "New confusion after surgery is a hard red flag.",
     require: [/(confus\w*|disorient\w*|not making sense|doesn'?t know where)/i], minMatches: 1 },
   { ruleId: "c1-urine", symptomCode: "urinary_retention", severity: "URGENT_CARE", rationale: "Inability to pass urine needs same-day assessment.",
-    require: [/(can'?t (pee|urinate|pass urine)|unable to (pee|urinate)|haven'?t (peed|urinated)|not (peed|urinated))/i], minMatches: 1 },
+    require: [/(can'?t (pee|urinate|pass urine)|(unable|not been able|haven'?t been able) to (pee|urinate)|haven'?t (peed|urinated)|not (peed|urinated))/i], minMatches: 1 },
   { ruleId: "c1-fever", symptomCode: "fever_38", severity: "URGENT_CARE", rationale: "Fever of 38°C or higher after surgery suggests infection.",
     require: [/(\b3[89](\.\d+)?\s*(°\s*C|celsius|degrees|c\b)|fever of 3[89]|temp\w* (of|is) 3[89]|\b10[0-9](\.\d+)?\s*(°\s*F|fahrenheit|f\b)|high fever)/i], minMatches: 1 },
 ];

@@ -1,3 +1,6 @@
+import { DatabaseSync } from "node:sqlite";
+import fs from "node:fs";
+import path from "node:path";
 import type { Finding, RuleEvaluation, Severity } from "@/lib/rules/types";
 
 export type Patient = {
@@ -45,7 +48,7 @@ export type ReportRecord = {
   usedLlm: boolean;
 };
 
-type Store = { patients: Map<string, Patient>; reports: Map<string, ReportRecord> };
+type Store = { patients: Map<string, Patient>; reports: Map<string, ReportRecord>; db: DatabaseSync };
 
 const g = globalThis as unknown as { __triageStore?: Store };
 
@@ -55,8 +58,7 @@ function daysAgo(n: number) {
   return d.toISOString().slice(0, 10);
 }
 
-function seed(): Store {
-  const patients: Patient[] = [
+export const SEED_PATIENTS: Patient[] = [
     {
       id: "p-asha", name: "Asha Mehta", procedureCode: "appendectomy", procedureLabel: "Laparoscopic appendectomy",
       surgeryDate: daysAgo(4), ageBand: 34, comorbidities: [], anticoagulated: false, language: "en",
@@ -84,13 +86,61 @@ function seed(): Store {
         { title: "Medication", items: ["Paracetamol 1 g every 6h", "Ibuprofen 400 mg every 8h with food"] },
       ],
     },
-  ];
-  return { patients: new Map(patients.map((p) => [p.id, p])), reports: new Map() };
+];
+
+function openDb(): DatabaseSync {
+  const file = process.env.RECOVERWELL_DB ?? path.join(process.cwd(), "data", "recoverwell.db");
+  if (file !== ":memory:") fs.mkdirSync(path.dirname(file), { recursive: true });
+  const db = new DatabaseSync(file);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS patients (id TEXT PRIMARY KEY, json TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, json TEXT NOT NULL);
+  `);
+  return db;
+}
+
+function init(): Store {
+  const db = openDb();
+  const patients = new Map<string, Patient>();
+  for (const row of db.prepare("SELECT json FROM patients").all() as { json: string }[]) {
+    const p = JSON.parse(row.json) as Patient;
+    patients.set(p.id, p);
+  }
+  if (patients.size === 0) {
+    const ins = db.prepare("INSERT OR REPLACE INTO patients (id, json) VALUES (?, ?)");
+    for (const p of SEED_PATIENTS) { ins.run(p.id, JSON.stringify(p)); patients.set(p.id, p); }
+  }
+  const reports = new Map<string, ReportRecord>();
+  for (const row of db.prepare("SELECT json FROM reports ORDER BY created_at").all() as { json: string }[]) {
+    const r = JSON.parse(row.json) as ReportRecord;
+    // A report interrupted for review cannot be resumed after a restart (checkpointer is in-memory); close it safely.
+    if (r.status === "pending_review") {
+      r.status = "complete";
+      r.severity = "CALL_CLINIC";
+      r.escalationRoute = "call_clinic";
+      r.explanation = "A nurse was not able to review this in time. Please call your clinic.";
+      r.humanDecision = { action: "override", severity: "CALL_CLINIC", reason: "Review window expired (server restart)", decidedBy: "system", decidedAt: new Date().toISOString() };
+    }
+    reports.set(r.id, r);
+  }
+  return { patients, reports, db };
 }
 
 export function store(): Store {
-  if (!g.__triageStore) g.__triageStore = seed();
+  if (!g.__triageStore) g.__triageStore = init();
   return g.__triageStore;
+}
+
+export function savePatient(p: Patient) {
+  const s = store();
+  s.patients.set(p.id, p);
+  s.db.prepare("INSERT OR REPLACE INTO patients (id, json) VALUES (?, ?)").run(p.id, JSON.stringify(p));
+}
+
+export function saveReport(r: ReportRecord) {
+  const s = store();
+  s.reports.set(r.id, r);
+  s.db.prepare("INSERT OR REPLACE INTO reports (id, created_at, json) VALUES (?, ?, ?)").run(r.id, r.createdAt, JSON.stringify(r));
 }
 
 export function recoveryDayFor(p: Patient): number {

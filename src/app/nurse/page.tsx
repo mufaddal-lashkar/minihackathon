@@ -1,21 +1,21 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { Check, ShieldAlert, UserCheck, Inbox, Loader2, Timer, Bot, Cpu, ArrowRightLeft } from "lucide-react";
 import type { Patient, ReportRecord } from "@/lib/db/store";
 import { SEVERITY_ORDER, type Severity } from "@/lib/rules/types";
-import { SeverityBadge } from "@/components/severity";
+import { SeverityBadge, SEVERITY_META } from "@/components/severity";
+import { TopBar } from "@/components/shell";
 
 type Row = ReportRecord & { patient?: Patient };
 
 export default function NursePage() {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [sel, setSel] = useState<Row | null>(null);
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [selId, setSelId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const data: Row[] = await fetch("/api/nurse/inbox").then((r) => r.json());
     setRows(data);
-    setSel((s) => (s ? data.find((d) => d.id === s.id) ?? null : null));
   }, []);
 
   useEffect(() => {
@@ -24,45 +24,71 @@ export default function NursePage() {
     return () => clearInterval(t);
   }, [load]);
 
-  const pending = rows.filter((r) => r.status === "pending_review");
-  const escalations = rows.filter((r) => r.status !== "pending_review");
+  const pending = (rows ?? []).filter((r) => r.status === "pending_review");
+  const escalations = (rows ?? []).filter((r) => r.status !== "pending_review");
+  const sel = rows?.find((r) => r.id === selId) ?? null;
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <Link href="/" className="text-sm text-teal-700">← Home</Link>
-          <h1 className="text-2xl font-bold">Nurse inbox</h1>
+    <>
+      <TopBar active="nurse" />
+      <main id="main" className="mx-auto w-full max-w-6xl px-4 py-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Nurse inbox</h1>
+            <p className="text-sm text-muted-fg">Reassurances wait for you. Escalations were already sent — you see them for follow-up.</p>
+          </div>
+          <div className="flex gap-2 text-sm">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1.5 font-semibold text-sky-900"><Timer size={14} aria-hidden /> {pending.length} awaiting</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1.5 font-semibold text-orange-900"><ShieldAlert size={14} aria-hidden /> {escalations.length} escalated</span>
+          </div>
         </div>
-        <div className="text-sm text-teal-900/60">{pending.length} awaiting review · {escalations.length} escalations</div>
-      </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-        <div className="space-y-6">
-          <Queue title="Awaiting your decision" rows={pending} sel={sel} onSel={setSel} empty="Nothing waiting. Reassurances only reach patients after you confirm them." />
-          <Queue title="Escalations (auto-sent, no gate)" rows={escalations} sel={sel} onSel={setSel} empty="No escalations yet." />
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
+          <div className="space-y-6">
+            {rows === null ? (
+              <div className="space-y-2" aria-busy="true">{[0, 1, 2].map((i) => <div key={i} className="skeleton h-20 rounded-xl" />)}</div>
+            ) : (
+              <>
+                <Queue title="Awaiting your decision" rows={pending} selId={selId} onSel={setSelId} empty="Nothing waiting. Reassurances only reach patients after you confirm them." />
+                <Queue title="Escalations (auto-sent, no gate)" rows={escalations} selId={selId} onSel={setSelId} empty="No escalations yet." />
+              </>
+            )}
+          </div>
+          <div className="lg:sticky lg:top-20 lg:self-start">
+            {sel ? (
+              <ReviewPanel key={sel.id} r={sel} onDone={load} />
+            ) : (
+              <div className="flex flex-col items-center rounded-2xl bg-surface p-10 text-center ring-1 ring-border">
+                <Inbox size={32} className="text-muted-fg" aria-hidden />
+                <p className="mt-3 font-semibold">Select a report</p>
+                <p className="mt-1 text-sm text-muted-fg">You’ll see the patient’s exact words, every rule that fired — and every rule that didn’t.</p>
+              </div>
+            )}
+          </div>
         </div>
-        <div>{sel ? <ReviewPanel key={sel.id} r={sel} onDone={load} /> : <div className="rounded-2xl bg-white p-8 text-center text-teal-900/50 ring-1 ring-teal-100">Select a report to see why the engine decided what it did.</div>}</div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
 
-function Queue({ title, rows, sel, onSel, empty }: { title: string; rows: Row[]; sel: Row | null; onSel: (r: Row) => void; empty: string }) {
+function Queue({ title, rows, selId, onSel, empty }: { title: string; rows: Row[]; selId: string | null; onSel: (id: string) => void; empty: string }) {
   return (
-    <section>
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-teal-700 mb-2">{title}</h2>
-      {rows.length === 0 && <div className="rounded-xl bg-white p-4 text-sm text-teal-900/50 ring-1 ring-teal-100">{empty}</div>}
+    <section aria-label={title}>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">{title}</h2>
+      {rows.length === 0 && <div className="rounded-xl bg-surface p-4 text-sm text-muted-fg ring-1 ring-border">{empty}</div>}
       <ul className="space-y-2">
         {rows.map((r) => (
           <li key={r.id}>
-            <button onClick={() => onSel(r)} className={`w-full rounded-xl bg-white p-3 text-left ring-1 transition ${sel?.id === r.id ? "ring-teal-500 shadow" : "ring-teal-100 hover:ring-teal-300"}`}>
+            <button onClick={() => onSel(r.id)} aria-pressed={selId === r.id} className={`press w-full rounded-xl bg-surface p-3 text-left ring-1 transition ${selId === r.id ? "shadow-md ring-2 ring-primary" : "ring-border hover:ring-primary/50"}`}>
               <div className="flex items-center justify-between gap-2">
-                <div className="font-semibold">{r.patient?.name ?? r.patientId} <span className="font-normal text-teal-900/50">· day {r.recoveryDay} · {r.patient?.procedureLabel}</span></div>
+                <div className="min-w-0 truncate font-semibold">{r.patient?.name ?? r.patientId} <span className="font-normal text-muted-fg">· day {r.recoveryDay} · {r.patient?.procedureLabel}</span></div>
                 {r.severity && <SeverityBadge severity={r.severity} small />}
               </div>
-              <div className="mt-1 text-sm text-teal-900/80 truncate">“{r.rawText}”</div>
-              <div className="mt-1 text-xs text-teal-900/50">{timeAgo(r.createdAt)}{r.humanDecision ? ` · ${r.humanDecision.action}ed by ${r.humanDecision.decidedBy}` : ""}</div>
+              <div className="mt-1 truncate text-sm text-foreground/80">“{r.rawText}”</div>
+              <div className="mt-1 flex items-center gap-2 text-xs text-muted-fg">
+                <span>{timeAgo(r.createdAt)}</span>
+                {r.humanDecision && <span className="inline-flex items-center gap-1"><UserCheck size={12} aria-hidden /> {r.humanDecision.action} by {r.humanDecision.decidedBy}</span>}
+              </div>
             </button>
           </li>
         ))}
@@ -86,57 +112,60 @@ function ReviewPanel({ r, onDone }: { r: Row; onDone: () => void }) {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify(mode === "confirm" ? { action: "confirm", decidedBy: "Nurse Priya" } : { action: "override", severity: sev, reason, decidedBy: "Nurse Priya" }),
     });
-    if (!res.ok) setErr((await res.json()).error ?? "failed");
+    if (!res.ok) setErr((await res.json()).error === "review_expired" ? "This review has expired or was already decided." : "Could not send the decision. Try again.");
     setBusy(false);
     onDone();
   }
 
   const fired = r.ruleEvaluations.filter((e) => e.fired);
   const notFired = r.ruleEvaluations.filter((e) => !e.fired);
+  const canSubmit = mode === "confirm" || (reason.trim().length > 0 && sev !== r.severity);
 
   return (
-    <div className="rise rounded-2xl bg-white p-5 ring-1 ring-teal-100">
+    <div className="rise rounded-2xl bg-surface p-5 ring-1 ring-border">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-lg font-bold">{r.patient?.name}</div>
-          <div className="text-sm text-teal-900/60">{r.patient?.procedureLabel} · day {r.recoveryDay} · age {r.patient?.ageBand}{r.patient?.anticoagulated ? " · anticoagulated" : ""}{r.patient?.comorbidities?.length ? ` · ${r.patient.comorbidities.join(", ")}` : ""}</div>
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold">{r.patient?.name}</h2>
+          <p className="text-sm text-muted-fg">{r.patient?.procedureLabel} · day {r.recoveryDay} · age {r.patient?.ageBand}{r.patient?.anticoagulated ? " · anticoagulated" : ""}{r.patient?.comorbidities?.length ? ` · ${r.patient.comorbidities.join(", ")}` : ""}</p>
         </div>
         {r.severity && <SeverityBadge severity={r.severity} />}
       </div>
 
-      <div className="mt-4 rounded-xl bg-teal-50 p-4 text-base leading-relaxed">
-        <div className="text-xs font-semibold uppercase tracking-wide text-teal-700 mb-1">Patient’s own words ({r.modality})</div>
-        <Highlighted text={r.rawText} spans={r.findings.map((f) => f.sourceSpan).filter((s): s is string => Boolean(s))} />
+      <div className="mt-4 rounded-xl bg-muted p-4">
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-primary">Patient’s own words · {r.modality.replace("_", " ")}</div>
+        <p className="text-base leading-relaxed"><Highlighted text={r.rawText} spans={r.findings.map((f) => f.sourceSpan).filter((s): s is string => Boolean(s))} /></p>
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-teal-700 mb-1">Findings</div>
-          {r.findings.length === 0 && <div className="text-sm text-teal-900/50">None extracted</div>}
+          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-primary">Findings</h3>
+          {r.findings.length === 0 && <p className="text-sm text-muted-fg">None extracted</p>}
           <ul className="space-y-1 text-sm">
             {r.findings.map((f, i) => (
-              <li key={i}><code className="rounded bg-teal-50 px-1">{f.symptomCode}</code>{f.sourceSpan && <span className="text-teal-900/60"> ← “{f.sourceSpan}”</span>}</li>
+              <li key={i}><code className="rounded bg-muted px-1.5 py-0.5 text-xs">{f.symptomCode}</code>{f.sourceSpan && <span className="text-muted-fg"> ← “{f.sourceSpan}”</span>}</li>
             ))}
           </ul>
-          {r.unmappedSpans.length > 0 && <div className="mt-1 text-xs text-amber-700">Ungrounded (dropped): {r.unmappedSpans.join(", ")}</div>}
-          <div className="mt-2 text-xs text-teal-900/50">Extraction via {r.usedLlm ? "Gemini" : "keyword stub"} · confidence {Math.round(r.extractionConfidence * 100)}%</div>
+          {r.unmappedSpans.length > 0 && <p className="mt-1 text-xs text-amber-800">Ungrounded, dropped: {r.unmappedSpans.join(", ")}</p>}
+          <p className="mt-2 inline-flex items-center gap-1 text-xs text-muted-fg">{r.usedLlm ? <Bot size={12} aria-hidden /> : <Cpu size={12} aria-hidden />} {r.winningRuleClass === 1 ? "Red flag caught before AI" : r.usedLlm ? "Gemini extraction" : "Keyword extraction"} · confidence {Math.round(r.extractionConfidence * 100)}%</p>
         </div>
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-teal-700 mb-1">Proposed outcome</div>
-          <div className="text-sm"><b>{r.proposedSeverity ?? r.severity}</b> via rule <code className="rounded bg-teal-50 px-1">{r.winningRuleId ?? "default"}</code> (class {r.winningRuleClass ?? "4"})</div>
-          <div className="mt-1 text-sm text-teal-900/70">{r.rationale}</div>
-          {r.explanation && <div className="mt-2 text-xs text-teal-900/50">Patient sees: “{r.explanation}”</div>}
+          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-primary">Proposed outcome</h3>
+          <p className="text-sm"><b>{(r.proposedSeverity ?? r.severity)?.replace("_", " ")}</b> via <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{r.winningRuleId ?? "default"}</code> (class {r.winningRuleClass ?? "4"})</p>
+          <p className="mt-1 text-sm text-muted-fg">{r.rationale}</p>
+          {r.explanation && <p className="mt-2 text-xs text-muted-fg">Patient sees: “{r.explanation}”</p>}
         </div>
       </div>
 
-      <details className="mt-4 text-sm" open>
-        <summary className="cursor-pointer font-semibold text-teal-800">Rule evaluations — {fired.length} fired, {notFired.length} did not</summary>
-        <ul className="mt-2 max-h-56 overflow-y-auto space-y-1">
+      <details className="group mt-4 text-sm" open>
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 font-semibold text-primary">
+          <ArrowRightLeft size={14} aria-hidden /> Rule evaluations — {fired.length} fired, {notFired.length} did not
+        </summary>
+        <ul className="mt-1 max-h-56 space-y-1 overflow-y-auto pr-1">
           {[...fired, ...notFired].map((e) => (
-            <li key={e.ruleId} className={`flex gap-2 rounded px-2 py-1 ${e.fired ? "bg-emerald-50" : "text-teal-900/50"}`}>
-              <span className="w-4">{e.fired ? "●" : "○"}</span>
-              <code className="w-28 shrink-0">{e.ruleId}</code>
-              <span className="w-24 shrink-0 text-xs">{e.severityAssigned ?? "—"}</span>
+            <li key={e.ruleId} className={`grid grid-cols-[16px_7rem_5.5rem_1fr] items-start gap-2 rounded-lg px-2 py-1.5 ${e.fired ? "bg-emerald-50 text-emerald-950" : "text-muted-fg"}`}>
+              <span aria-label={e.fired ? "fired" : "did not fire"}>{e.fired ? <Check size={14} aria-hidden /> : <span className="block h-3.5 w-3.5 rounded-full border border-current opacity-40" />}</span>
+              <code className="text-xs">{e.ruleId}</code>
+              <span className="text-xs">{e.severityAssigned?.replace("_", " ") ?? "—"}</span>
               <span className="text-xs">{e.rationale}</span>
             </li>
           ))}
@@ -144,42 +173,50 @@ function ReviewPanel({ r, onDone }: { r: Row; onDone: () => void }) {
       </details>
 
       {pending ? (
-        <div className="mt-5 border-t border-teal-100 pt-4">
-          <div className="flex gap-2">
-            <button onClick={() => setMode("confirm")} className={`rounded-lg px-3 py-1.5 text-sm font-semibold ring-1 ${mode === "confirm" ? "bg-teal-700 text-white ring-teal-700" : "ring-teal-300"}`}>Confirm</button>
-            <button onClick={() => setMode("override")} className={`rounded-lg px-3 py-1.5 text-sm font-semibold ring-1 ${mode === "override" ? "bg-teal-700 text-white ring-teal-700" : "ring-teal-300"}`}>Override</button>
+        <div className="mt-5 border-t border-border pt-4">
+          <div className="flex gap-2" role="radiogroup" aria-label="Decision">
+            {(["confirm", "override"] as const).map((m) => (
+              <button key={m} role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={`press min-h-11 rounded-lg px-4 text-sm font-semibold ring-1 transition-colors ${mode === m ? "bg-primary text-on-primary ring-primary" : "ring-border hover:bg-muted"}`}>
+                {m === "confirm" ? "Confirm" : "Override"}
+              </button>
+            ))}
           </div>
           {mode === "override" && (
-            <div className="mt-3 space-y-2">
-              <div className="flex flex-wrap gap-2">
+            <div className="mt-3 space-y-3">
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="New severity">
                 {SEVERITY_ORDER.map((s) => (
-                  <button key={s} onClick={() => setSev(s)} className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${sev === s ? "bg-teal-700 text-white ring-teal-700" : "ring-teal-300"}`}>{s.replace("_", " ")}</button>
+                  <button key={s} role="radio" aria-checked={sev === s} onClick={() => setSev(s)} className={`press inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold ring-1 transition-colors ${sev === s ? `${SEVERITY_META[s].badge} text-white ring-transparent` : "ring-border hover:bg-muted"}`}>
+                    {s.replace("_", " ")}
+                  </button>
                 ))}
               </div>
-              <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="One-line reason (required)" className="w-full rounded-lg border border-teal-200 p-2 text-sm" />
+              <div>
+                <label htmlFor="override-reason" className="text-sm font-semibold">Reason <span className="text-destructive">*</span></label>
+                <input id="override-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="One line, shown in the audit trail" className="mt-1 min-h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm focus:border-primary" />
+                <p className="mt-1 text-xs text-muted-fg">Pick a different severity and give a reason. If you lower it, the patient is told a nurse reviewed it — never that the system changed its mind.</p>
+              </div>
             </div>
           )}
-          {err && <div className="mt-2 text-sm text-red-700">{err}</div>}
-          <button onClick={decide} disabled={busy || (mode === "override" && (!reason.trim() || sev === r.severity))} className="mt-3 w-full rounded-xl bg-teal-700 py-3 font-semibold text-white disabled:opacity-40">
+          {err && <p role="alert" className="mt-2 text-sm text-destructive">{err}</p>}
+          <button onClick={decide} disabled={busy || !canSubmit} className="press mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40">
+            {busy ? <Loader2 className="animate-spin" size={18} aria-hidden /> : <Check size={18} aria-hidden />}
             {busy ? "Sending…" : mode === "confirm" ? "Confirm and release to patient" : "Override and release to patient"}
           </button>
         </div>
       ) : (
-        <div className="mt-5 border-t border-teal-100 pt-4 text-sm text-teal-900/60">
-          {r.humanDecision ? `Decided: ${r.humanDecision.action} by ${r.humanDecision.decidedBy}${r.humanDecision.reason ? ` — ${r.humanDecision.reason}` : ""}` : "Escalation was sent to the patient immediately; no human gate on the escalation path."}
-        </div>
+        <p className="mt-5 border-t border-border pt-4 text-sm text-muted-fg">
+          {r.humanDecision ? `Decided: ${r.humanDecision.action} by ${r.humanDecision.decidedBy}${r.humanDecision.reason ? ` — ${r.humanDecision.reason}` : ""}` : "Escalation was sent to the patient immediately; there is no human gate on the escalation path."}
+        </p>
       )}
     </div>
   );
 }
 
 function Highlighted({ text, spans }: { text: string; spans: string[] }) {
-  if (!spans.length) return <span>“{text}”</span>;
+  if (!spans.length) return <>“{text}”</>;
   const re = new RegExp(`(${spans.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
   const parts = text.split(re);
-  return (
-    <span>“{parts.map((p, i) => (re.test(p) && spans.some((s) => s.toLowerCase() === p.toLowerCase()) ? <mark key={i} className="rounded bg-yellow-200 px-0.5">{p}</mark> : <span key={i}>{p}</span>))}”</span>
-  );
+  return <>“{parts.map((p, i) => (spans.some((s) => s.toLowerCase() === p.toLowerCase()) ? <mark key={i} className="rounded bg-yellow-200 px-0.5">{p}</mark> : <span key={i}>{p}</span>))}”</>;
 }
 
 function timeAgo(iso: string) {

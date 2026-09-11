@@ -1,58 +1,79 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, CalendarDays, ClipboardList, FileText, Clock } from "lucide-react";
 import { store, recoveryDayFor } from "@/lib/db/store";
+import { loadRules, phaseForDay } from "@/lib/rules/load-rules";
 import { TriageSheet } from "@/components/triage-sheet";
+import { SeverityBadge } from "@/components/severity";
 
 export const dynamic = "force-dynamic";
+
+const NICE: Record<string, string> = {
+  serous_drainage: "a little clear fluid on the dressing", mild_incisional_pain: "mild pain around the wound", low_grade_temp: "a slightly raised temperature",
+  mild_swelling: "some swelling", decreased_rom: "stiffness and limited bending", incisional_pain: "pain at the incision", lochia_heavy: "bleeding like a heavy period",
+  breast_engorgement: "breast fullness", wound_redness: "faint pinkness at the edges",
+};
 
 export default async function PatientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const p = store().patients.get(id);
   if (!p) notFound();
   const day = recoveryDayFor(p);
+  let expected: string[] = [];
+  try { expected = phaseForDay(loadRules(p.procedureCode), day).expectedSymptoms.map((s) => NICE[s] ?? s.replace(/_/g, " ")); } catch {}
   const history = [...store().reports.values()].filter((r) => r.patientId === p.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
 
   return (
-    <main className="mx-auto w-full max-w-md px-4 py-6 pb-24">
-      <div className="flex items-center justify-between">
-        <Link href="/" className="text-sm text-teal-700">← Patients</Link>
-        <span className="text-xs text-teal-900/50">Demo · {p.name}</span>
+    <main id="main" className="mx-auto w-full max-w-md px-4 pb-32 pt-4">
+      <div className="flex min-h-11 items-center justify-between">
+        <Link href="/" className="inline-flex min-h-11 items-center gap-1 rounded-lg text-sm font-medium text-primary"><ArrowLeft size={16} aria-hidden /> Patients</Link>
+        <Link href={`/patient/${p.id}/plan`} className="inline-flex min-h-11 items-center gap-1 rounded-lg text-sm font-medium text-primary"><FileText size={16} aria-hidden /> Recovery plan</Link>
       </div>
 
-      <header className="mt-4 rise">
-        <div className="text-sm text-teal-700 font-semibold">Good day, {p.name.split(" ")[0]}</div>
-        <h1 className="text-2xl font-bold">Day {day} after your {p.procedureLabel.toLowerCase()}</h1>
-        <p className="text-sm text-teal-900/60 mt-1">Here is what is normal today, and what to do if something feels off.</p>
+      <header className="rise mt-2">
+        <div className="text-sm font-medium text-muted-fg">Hello, {p.name.split(" ")[0]}</div>
+        <h1 className="mt-1 text-3xl font-bold leading-tight">Day {day} after your {p.procedureLabel.toLowerCase()}</h1>
+        <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-primary"><CalendarDays size={14} aria-hidden /> Surgery on {new Date(p.surgeryDate).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</div>
       </header>
 
-      <section className="mt-6 space-y-3">
-        {p.plan.map((g) => (
-          <div key={g.title} className="rise rounded-2xl bg-white p-4 ring-1 ring-teal-100">
-            <div className="text-xs font-semibold uppercase tracking-wide text-teal-700">{g.title}</div>
-            <ul className="mt-2 space-y-1.5 text-sm">
-              {g.items.map((it) => (
-                <li key={it} className="flex gap-2"><span className="text-teal-500">•</span><span>{it}</span></li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      {expected.length > 0 && (
+        <section className="rise mt-6 rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-200" aria-labelledby="normal-today">
+          <h2 id="normal-today" className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Normal for today</h2>
+          <p className="mt-1 text-sm text-emerald-950">You may notice {expected.join(", ")}. These are expected on day {day}.</p>
+        </section>
+      )}
+
+      <section className="mt-6" aria-labelledby="plan-heading">
+        <h2 id="plan-heading" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><ClipboardList size={14} aria-hidden /> Your plan today</h2>
+        <div className="stagger mt-2 space-y-3">
+          {p.plan.map((g) => (
+            <div key={g.title} className="rounded-2xl bg-surface p-4 ring-1 ring-border">
+              <h3 className="text-sm font-semibold">{g.title}</h3>
+              <ul className="mt-2 space-y-2 text-sm">
+                {g.items.map((it) => (
+                  <li key={it} className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />{it}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       </section>
 
-      <TriageSheet patientId={p.id} procedureCode={p.procedureCode} />
-
       {history.length > 0 && (
-        <section className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-teal-700 mb-2">Recent check-ins</h2>
-          <ul className="space-y-2">
+        <section className="mt-8" aria-labelledby="history-heading">
+          <h2 id="history-heading" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><Clock size={14} aria-hidden /> Recent check-ins</h2>
+          <ul className="mt-2 space-y-2">
             {history.map((r) => (
-              <li key={r.id} className="rounded-xl bg-white p-3 ring-1 ring-teal-100 text-sm">
-                <div className="text-teal-900/80">“{r.rawText}”</div>
-                <div className="mt-1 text-xs text-teal-900/50">{r.status === "pending_review" ? "Waiting for nurse review" : r.severity?.replace("_", " ")}</div>
+              <li key={r.id} className="flex items-center justify-between gap-3 rounded-xl bg-surface p-3 text-sm ring-1 ring-border">
+                <span className="truncate text-foreground/80">“{r.rawText}”</span>
+                {r.status === "pending_review" ? <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-900">Nurse reviewing</span> : r.severity && <SeverityBadge severity={r.severity} small />}
               </li>
             ))}
           </ul>
         </section>
       )}
+
+      <TriageSheet patientId={p.id} procedureCode={p.procedureCode} />
     </main>
   );
 }
