@@ -106,8 +106,10 @@ No diagnosis entity. No medication interaction checking. No risk score. All thre
 
 Four rule classes, evaluated in strict priority order. First match wins for severity; lower classes can add context but cannot lower a severity already assigned.
 
-**Class 1 — Hard red flags (absolute, no LLM involvement at any point)**
+**Class 1 — Hard red flags (absolute, caught before the LLM runs)**
 Fever ≥ 38 °C, chest pain, dyspnea, unilateral calf pain + swelling, soaking-through bleeding, wound dehiscence, syncope, confusion, inability to urinate. Escalate unconditionally. Severity: `EMERGENCY` or `URGENT_CARE`.
+
+Class 1 is enforced by a deterministic keyword/regex pre-filter that runs on `rawText` **before** `extract` is called (`pre_filter`, §6.2). It does not depend on Gemini. This closes the hole where a mis-mapped extraction code lets a red flag pass: even if `extract` never runs — because Gemini is down, rate-limited, or returns garbage — a literal "chest pain" or "calf is sore and puffy" in the patient's text still escalates.
 
 **Class 2 — Procedure-and-day-specific expectations**
 The PS's actual hard problem. Each rule states: on day N of procedure P, symptom S is `expected` / `watch` / `escalate`. Serous drainage on day 2 post-appendectomy is expected; the same on day 10 is not. This is the only class that cannot work from a static list — it requires the phase model.
@@ -154,11 +156,12 @@ Class-1 rules can never trigger it, because they never land on the reassurance p
 | Node | Kind | Does | On failure |
 |---|---|---|---|
 | `ingest` | deterministic | Resolve patient, compute `recoveryDay`, normalize modality | unknown patient → hard fail, no thread |
+| `pre_filter` | deterministic | **Class-1 keyword/regex scan of `rawText`.** Any match short-circuits to `evaluate_rules` with a synthetic Class-1 finding; `extract` is skipped. | no match → proceed to `extract` |
 | `extract` | **Gemini** | raw text/voice → `Finding[]` + confidence + `sourceSpan` | → `extraction_failed` (class 4) → human review |
-| `validate` | deterministic | Schema check **+ grounding check**: every `sourceSpan` must be a literal substring of `rawText`. Ungrounded findings dropped. | all findings dropped → class 4 → human review |
+| `validate` | deterministic | Schema check **+ grounding check**: every finding extracted from free text must have a `sourceSpan` that is a literal substring of `rawText`. Findings from structured chip intake carry no `sourceSpan` and bypass the substring check — they are pre-segmented and cannot be hallucinated. Ungrounded free-text findings dropped. | all findings dropped → class 4 → human review |
 | `evaluate_rules` | deterministic | Class 1→4 in strict priority; writes a `RuleEvaluation` row per rule, fired or not | → `rule_config_missing` → human review |
 | `triage` | deterministic | Severity = max over fired rules; pick route + `winningRuleId` | no rule fired → class-4 default |
-| `human_review` | **`interrupt()`** | Pause. Nurse approves / edits / overrides. | timeout → severity **floors at `CALL_CLINIC`** |
+| `human_review` | **`interrupt()`** + server timer | Pause. Nurse approves / edits / overrides. A single-process `setTimeout` keyed to `reportId` (SLA default 15 min) fires if no decision lands: it writes a `CALL_CLINIC` outcome, closes the thread, and pushes to the patient. | timer is the timeout mechanism; see §6.5 |
 | `explain` | **Gemini** | Render verdict in patient's language + reading level | → **template fallback** (pre-written per severity+rule) |
 | `notify_care_team` | deterministic | Push to inbox; runs in parallel on the escalation path | queue failure → logged, patient unaffected |
 | `persist` | deterministic | Write `TriageOutcome`, close thread | — |
@@ -221,14 +224,14 @@ A per-patient thread would mean every check-in resumes the same long-lived pause
 
 | Failure | Behaviour | Safe direction? |
 |---|---|---|
-| Gemini down / rate-limited | `extraction_failed` → human review; `explain` → template | Yes — escalates |
+| Gemini down / rate-limited | Free-text Class-1 phrases still caught by `pre_filter` (no LLM). Everything else: `extraction_failed` → human review; `explain` → template | Yes — escalates |
 | Gemini invents a symptom | `validate` drops it | Yes — contained |
 | Gemini returns malformed JSON | `extraction_failed` → human review | Yes — escalates |
 | No rule fires | class-4 default → human review | Yes — escalates |
-| Nurse does not respond in N minutes | severity floors at `CALL_CLINIC` | Yes — never auto-reassures |
+| Nurse does not respond within the SLA (default 15 min) | `human_review`'s server-side timer writes a `CALL_CLINIC` outcome and closes the thread, so the `202` client receives a terminal verdict instead of polling forever | Yes — never auto-reassures |
 | Rule config missing for procedure | class 4 → human review | Yes — escalates |
 
-Every row fails toward more human involvement, never less. There is no path where the system degrades into telling someone they are fine.
+Every row fails toward more human involvement, never less. With the `human_review` timer in place, there is no path to a *system-generated* false reassurance: an unanswered `202` resolves to `CALL_CLINIC`, never to silence and never to `SELF_CARE`.
 
 ---
 
@@ -256,6 +259,8 @@ If a network hiccup or slow LLM pushes an escalation past the client's timeout, 
 
 `POST /api/reports` invokes the graph once; if `result.__interrupt__` is present, the route returns `202` and does not block. `POST .../review` invokes the *same* graph with `new Command({ resume })` and the same `thread_id`, resuming from the checkpoint.
 
+**Accepted prototype limitation: no authentication.** None of these endpoints are authenticated. `report-{uuid}` thread IDs are guessable, and `GET /api/reports/:id` returns the patient's raw words. In a real deployment this is a direct route to the false reassurance §11 claims is impossible — anyone could read a report or resume a held interrupt. For the hackathon demo the surfaces are on localhost and the demo data is synthetic, so the risk is contained. If this ever leaves localhost, every endpoint needs auth (per-patient tokens for `GET /api/reports/:id`, per-nurse identity for `/review` and `/inbox`) before anything else ships.
+
 ### 7.3 Deployment constraint
 
 `MemorySaver` lives in the process that created the checkpoint. `POST /api/reports` and `POST /api/reports/:id/review` **must hit the same Node process**, or the resume finds no checkpoint and the review silently fails.
@@ -278,7 +283,10 @@ discharge PDF/photo ──► /api/plans/extract ──► Gemini vision ──�
 
    patient check-in ──► POST /api/reports
                               │
-                        graph: ingest → extract → validate → evaluate_rules → triage
+                   graph: ingest → pre_filter ─┬─(Class-1 hit)─► evaluate_rules
+                                               └─(no hit)─► extract → validate → evaluate_rules
+                                                                                      │
+                                                                                   triage
                               │
                     ┌─────────┴──────────┐
           severity ≥ URGENT_CARE   severity ≤ CALL_CLINIC
@@ -345,7 +353,7 @@ The prefilled "what to say on the phone" matters: an anxious patient calling a c
 
 ### 8.3 The `202` pending state
 
-A patient submits "my calf is sore and puffy" and gets back *a nurse is reviewing this.* They are anxious, possibly deteriorating, and the app just went quiet. This is the worst moment in the product.
+A patient submits "my wound is a bit more pink than yesterday" and gets back *a nurse is reviewing this.* They are anxious, and the app just went quiet. This is the worst moment in the product.
 
 **Design answer: the pending state is not a dead end, it is a red-flag self-check.**
 
@@ -392,9 +400,9 @@ Two buttons: **Confirm** and **Override**. Override requires picking a different
 1. Photograph a discharge sheet → plan appears, structured (20s)
 2. Today view, day 4 — tap through two tasks (20s)
 3. Type "my calf is sore and puffy" → **escalation fires, immediate, no gate** (30s)
-4. Type "my wound is a bit pink" → **202 pending, red-flag self-check shown** (30s)
+4. Type "my wound is a bit more pink than yesterday" → **202 pending, red-flag self-check shown** (30s)
 5. Cut to nurse inbox → confirm → patient view updates (40s)
-6. Kill the Gemini API key mid-demo, repeat step 3 → **still escalates, template explanation** (30s)
+6. Kill the Gemini API key mid-demo, repeat step 3 → **`pre_filter` still catches the calf red flag, `extract` is skipped, escalation fires, template explanation** (30s)
 
 Step 6 is the difference between "we built an LLM app" and "we built a system that survives its LLM."
 
@@ -406,16 +414,16 @@ Sequenced so that every checkpoint is demoable, and the safety-critical determin
 
 | # | Milestone | Deliverable | Demoable at end? |
 |---|---|---|---|
+| 0 | Rule table + fixture table | Class 1/2 rules authored as JSON for appendectomy, knee replacement, and C-section; ~20-phrase fixture table (see §10) asserted by hand against §5, §8.3, and §8.6 | No — but this unblocks 2–5 and proves the demo beats can fire |
 | 1 | Scaffold | `create-next-app`, Prisma + SQLite, schema from §4 | No |
 | 2 | Rule engine | Rules as data, evaluator, table-driven tests. No graph, no LLM. | No — but this is the spine |
-| 3 | Graph, stubbed LLM | Full topology from §6 with a fake extractor/explainer. Interrupt verified. | **Yes** |
-| 4 | API layer | §7 endpoints against the stubbed graph | **Yes** |
-| 5 | Patient UI | Today + triage + severity ladder + pending state | **Yes** |
-| 6 | Gemini, real | Swap stub for `ChatGoogleGenerativeAI` in `extract` and `explain`; template fallback | **Yes** |
-| 7 | Nurse inbox | Queue, confirm/override, resume | **Yes** |
-| 8 | Plan extraction | Discharge photo → draft plan, multimodal node | **Yes** |
+| 3 | **Vertical slice** | Stub graph (fake extractor/explainer) + `pre_filter` + `POST /api/reports` returning `200`/`202`. Interrupt verified. | **Yes — first real demo** |
+| 4 | Patient UI | Today + triage + severity ladder + pending state | **Yes** |
+| 5 | Gemini, real | Swap stub for `ChatGoogleGenerativeAI` in `extract` and `explain`; template fallback | **Yes** |
+| 6 | Nurse inbox | Queue, confirm/override, resume | **Yes** |
+| 7 | Plan extraction | Discharge photo → draft plan, multimodal node | **Yes** |
 
-**Why Gemini comes at milestone 6, after the entire UI is built:** if the model integration goes in first, every downstream bug is ambiguous — is it the prompt, the graph, or the component? Stubbing first means when the real model goes in, it is the only variable that changed. And if Gemini is still flaky late in the build, there is a fully working product with a stub and a demo that shows the architecture honestly.
+**Why Gemini comes at milestone 5, after the entire UI is built:** if the model integration goes in first, every downstream bug is ambiguous — is it the prompt, the graph, or the component? Stubbing first means when the real model goes in, it is the only variable that changed. And if Gemini is still flaky late in the build, there is a fully working product with a stub and a demo that shows the architecture honestly.
 
 **Why plan extraction is last:** it is the highest-variance piece. Multimodal extraction from a photographed document either works in an hour or eats four. It is also the most cuttable without hurting the core claim.
 
@@ -426,22 +434,25 @@ Sequenced so that every checkpoint is demoable, and the safety-critical determin
 1. Vitals entry (already deferred)
 2. Multilingual beyond English + one other (pick one)
 3. Voice input (keep TTS readout — cheaper, higher impact for elderly patients)
-4. Nurse inbox → read-only list, no override
-5. Between-visit summary export
-6. Plan extraction → hand-seeded plans for the 3 demo procedures
-7. Teach-back quiz
+4. Between-visit summary export
+5. Plan extraction → hand-seeded plans for the 3 demo procedures
+6. Teach-back quiz
+
+**Removed from the cut list:** "nurse inbox → read-only, no override" was a cut in the first draft. It contradicted §8.6 step 5 (confirm) and §8.5 (override). Confirm/override is the HITL payoff, so it is protected, not cuttable.
 
 **Never cut:** the rule engine, the bifurcated interrupt, the grounding check in `validate`, the template fallback. Those four are the product.
 
 ### 9.2 Conditional: if deployment is added later
 
-Insert between milestones 1 and 3: **swap `MemorySaver` for the Postgres checkpointer.** Same LangGraph API — the compile call changes and nothing else does. Budget ~2 hours including provisioning. Without it, `POST /review` returns `409` whenever the resume lands on a different instance, and demo step 5 breaks in a way that looks like a logic bug but is not.
+Insert between milestones 2 and 3: **swap `MemorySaver` for the Postgres checkpointer.** Same LangGraph API — the compile call changes and nothing else does. Budget ~2 hours including provisioning. Without it, `POST /review` returns `409` whenever the resume lands on a different instance, and demo step 5 breaks in a way that looks like a logic bug but is not.
 
 ---
 
 ## 10. Testing
 
 The deterministic core is where tests live, and it is the only part worth claiming coverage on.
+
+**Fixture table (build first, before any code).** ~20 red-flag and ambiguous phrases, each tagged with its expected §5 class and its expected route (`200` escalation vs `202` pending). Asserted by hand against §5, §8.3, and §8.6. The calf entry fails on the first pass — that is the point: this artifact simultaneously exposes the calf contradiction, unblocks the rule-table authoring for milestones 0 and 2–5, and proves the demo's escalation and `202` beats can actually fire.
 
 **Rule engine** — table-driven, one case per rule, plus precedence tests (class 1 beats class 3 beats class 2; class 3 can raise but never lower).
 
@@ -463,8 +474,8 @@ The deterministic core is where tests live, and it is the only part worth claimi
 
 Three sentences that must remain true through implementation. If any stops being true, that is a bug worth stopping for.
 
-1. Every symptom check-in is classified by a deterministic rule engine; the LLM extracts findings and writes the explanation, and cannot alter severity.
-2. Every failure mode — LLM down, LLM hallucinating, no rule matching, nurse unresponsive — degrades toward *more* human involvement, never less. There is no path to a false reassurance.
+1. Every symptom check-in is classified by a deterministic rule engine. Class-1 red flags are caught by a deterministic `pre_filter` on raw text before any LLM call; for all other findings the LLM extracts and the rule engine assigns severity. The LLM writes the explanation and cannot alter severity.
+2. Every failure mode — LLM down, LLM hallucinating, no rule matching, nurse unresponsive — degrades toward *more* human involvement, never less. There is no path to a *system-generated* false reassurance: the `human_review` timer floors an unanswered review at `CALL_CLINIC`.
 3. Escalations are never gated behind human approval; reassurances always are.
 
 ## 12. Clinical disclaimer
