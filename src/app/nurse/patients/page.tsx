@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronRight, Phone } from "lucide-react";
 import { Shell } from "@/components/shell";
 import { SeverityBadge } from "@/components/severity";
-import { store, recoveryDayFor } from "@/lib/db/store";
+import { store, recoveryDayFor, syncStore } from "@/lib/db/store";
 import { reportsFor } from "@/lib/db/stats";
 import { seedHistory } from "@/lib/db/seed-history";
 import { timeAgo } from "@/lib/format";
@@ -10,7 +10,8 @@ import { LANGS } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-export default function PatientsPage() {
+export default async function PatientsPage() {
+  await syncStore();
   seedHistory();
   const patients = [...store().patients.values()];
   const reports = reportsFor();

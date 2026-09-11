@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { store } from "@/lib/db/store";
+import { store, syncStore } from "@/lib/db/store";
 import { seedHistory } from "@/lib/db/seed-history";
 import { AppShell } from "./app-shell";
 
-export function Shell({ role, patientId, children }: { role: "nurse" | "patient"; patientId?: string; children: ReactNode }) {
+export async function Shell({ role, patientId, children }: { role: "nurse" | "patient"; patientId?: string; children: ReactNode }) {
+  await syncStore();
   seedHistory();
   const s = store();
   const patients = [...s.patients.values()].map((p) => ({ id: p.id, name: p.name, procedureLabel: p.procedureLabel, language: p.language }));

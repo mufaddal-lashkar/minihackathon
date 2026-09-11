@@ -3,14 +3,15 @@ import { Timer, ShieldAlert, UserCheck, ArrowRightLeft, Bot, ChevronRight, Activ
 import { Shell } from "@/components/shell";
 import { ReportsByDay, SeverityDonut, ClassBars } from "@/components/charts";
 import { SeverityBadge } from "@/components/severity";
-import { store, recoveryDayFor } from "@/lib/db/store";
+import { store, recoveryDayFor, syncStore } from "@/lib/db/store";
 import { computeStats, reportsFor } from "@/lib/db/stats";
 import { seedHistory } from "@/lib/db/seed-history";
 import { timeAgo } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default function NurseDashboard() {
+export default async function NurseDashboard() {
+  await syncStore();
   seedHistory();
   const reports = reportsFor();
   const st = computeStats(reports);

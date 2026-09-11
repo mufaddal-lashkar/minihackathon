@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { saveReport, store, type ReportRecord } from "./store";
 import { preFilter } from "@/lib/rules/class1-pre-filter";
 import { loadRules } from "@/lib/rules/load-rules";
@@ -44,7 +43,7 @@ export function seedHistory() {
   const s = store();
   if ([...s.reports.values()].some((r) => r.seeded)) return;
   const now = new Date();
-  for (const item of SCRIPT) {
+  for (const [idx, item] of SCRIPT.entries()) {
     const p = s.patients.get(item.patientId);
     if (!p) continue;
     const at = new Date(now); at.setDate(at.getDate() - item.daysAgo); at.setHours(item.hour, 12, 0, 0);
@@ -55,7 +54,7 @@ export function seedHistory() {
     const ev = evaluateRules({ rules, findings, recoveryDay, patient: { ageBand: p.ageBand, comorbidities: p.comorbidities, anticoagulated: p.anticoagulated }, preFilterHit: hit, extractionConfidence: findings.length ? 0.8 : 0.3 });
     const escalated = ev.severity === "URGENT_CARE" || ev.severity === "EMERGENCY";
     const rec: ReportRecord = {
-      id: randomUUID(), patientId: p.id, recoveryDay, modality: "free_text", rawText: item.text, createdAt: at.toISOString(), status: "complete",
+      id: `seed-${String(idx).padStart(2, "0")}`, patientId: p.id, recoveryDay, modality: "free_text", rawText: item.text, createdAt: at.toISOString(), status: "complete",
       severity: ev.severity, proposedSeverity: ev.severity, winningRuleId: ev.winningRuleId, winningRuleClass: ev.winningRuleClass, rationale: ev.rationale,
       escalationRoute: ev.severity.toLowerCase(), explanation: templateExplanation(ev.severity, p.language), findings, unmappedSpans: [], extractionConfidence: findings.length ? 0.8 : 0.3,
       ruleEvaluations: ev.evaluations, requiresHuman: !escalated, usedLlm: false, seeded: true,

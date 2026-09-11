@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { store, recoveryDayFor } from "@/lib/db/store";
+import { store, recoveryDayFor, syncStore } from "@/lib/db/store";
 import { loadRules, phaseForDay } from "@/lib/rules/load-rules";
 
 // Pure computation from the plan + surgeryDate. No LLM.
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await syncStore();
   const p = store().patients.get(id);
   if (!p) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const recoveryDay = recoveryDayFor(p);

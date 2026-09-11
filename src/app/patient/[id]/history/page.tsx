@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Shell } from "@/components/shell";
 import { SeverityBadge } from "@/components/severity";
 import { SeverityTimeline } from "@/components/charts";
-import { store } from "@/lib/db/store";
+import { store, syncStore } from "@/lib/db/store";
 import { reportsFor } from "@/lib/db/stats";
 import { seedHistory } from "@/lib/db/seed-history";
 import { t, bcp47 } from "@/lib/i18n";
@@ -12,6 +12,7 @@ import { templateExplanation, NURSE_REVIEWED } from "@/lib/templates/explanation
 export const dynamic = "force-dynamic";
 
 export default async function HistoryPage({ params }: { params: Promise<{ id: string }> }) {
+  await syncStore();
   const { id } = await params;
   seedHistory();
   const p = store().patients.get(id);

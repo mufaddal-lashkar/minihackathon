@@ -4,7 +4,8 @@ import {
   ingestNode, preFilterNode, extractNode, validateNode, evaluateRulesNode, triageNode,
   humanReviewNode, explainNode, notifyCareTeamNode, persistNode,
 } from "./nodes";
-import { store, type HumanDecision } from "@/lib/db/store";
+import { store, saveReport, type HumanDecision } from "@/lib/db/store";
+import { templateExplanation, NURSE_REVIEWED } from "@/lib/templates/explanations";
 
 const g = globalThis as unknown as { __triageCheckpointer?: MemorySaver };
 const checkpointer = (g.__triageCheckpointer ??= new MemorySaver());
@@ -64,7 +65,22 @@ function scheduleSla(reportId: string) {
 
 export async function resumeReport(reportId: string, decision: HumanDecision) {
   const snapshot = await graph.getState(cfg(reportId));
-  if (!snapshot?.next?.length) return null;
+  if (!snapshot?.next?.length) {
+    // On serverless the held interrupt may live on another instance. The record itself carries everything the
+    // nurse decided on, so finalise it directly rather than losing the decision.
+    const rec = store().reports.get(reportId);
+    if (!rec || rec.status !== "pending_review") return null;
+    const patient = store().patients.get(rec.patientId);
+    const lang = patient?.language ?? "en";
+    const severity = decision.action === "override" && decision.severity ? decision.severity : (rec.severity ?? "CALL_CLINIC");
+    rec.severity = severity;
+    rec.humanDecision = decision;
+    rec.escalationRoute = severity.toLowerCase();
+    rec.explanation = decision.decidedBy === "system" ? templateExplanation(severity, lang) : `${NURSE_REVIEWED[lang] ?? NURSE_REVIEWED.en} ${templateExplanation(severity, lang)}`;
+    rec.status = "complete";
+    saveReport(rec);
+    return rec;
+  }
   clearTimeout(slaTimers.get(reportId));
   slaTimers.delete(reportId);
   await graph.invoke(new Command({ resume: decision }), cfg(reportId));

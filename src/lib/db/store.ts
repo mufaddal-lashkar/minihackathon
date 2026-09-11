@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 import type { Finding, RuleEvaluation, Severity } from "@/lib/rules/types";
+import { blobEnabled, loadSnapshot, markDirty, markSynced, shouldSync, writeSnapshot } from "./blob-sync";
 
 export type Patient = {
   id: string;
@@ -169,12 +170,46 @@ export function savePatient(p: Patient) {
   const s = store();
   s.patients.set(p.id, p);
   s.db.prepare("INSERT OR REPLACE INTO patients (id, json) VALUES (?, ?)").run(p.id, JSON.stringify(p));
+  markDirty();
 }
 
 export function saveReport(r: ReportRecord) {
   const s = store();
   s.reports.set(r.id, r);
   s.db.prepare("INSERT OR REPLACE INTO reports (id, created_at, json) VALUES (?, ?, ?)").run(r.id, r.createdAt, JSON.stringify(r));
+  markDirty();
+}
+
+// --- Serverless (Vercel) mirror. No-ops when BLOB_READ_WRITE_TOKEN is unset, so local stays plain SQLite. ---
+
+// Pull the shared snapshot written by other instances. Call at the top of API routes and page renders.
+export async function syncStore(): Promise<void> {
+  if (!shouldSync()) return;
+  const snap = await loadSnapshot();
+  markSynced();
+  if (!snap) return;
+  const s = store();
+  for (const p of snap.patients) {
+    const seed = SEED_PATIENTS.find((x) => x.id === p.id);
+    if (seed) for (const k of ["phone", "clinicPhone", "surgeon"] as const) if (!p[k]) p[k] = seed[k];
+    applySeedI18n(p);
+    s.patients.set(p.id, p);
+    s.db.prepare("INSERT OR REPLACE INTO patients (id, json) VALUES (?, ?)").run(p.id, JSON.stringify(p));
+  }
+  for (const r of snap.reports) {
+    const local = s.reports.get(r.id);
+    // Never let a stale snapshot regress a report this instance already completed.
+    if (local && local.status === "complete" && r.status === "pending_review") continue;
+    s.reports.set(r.id, r);
+    s.db.prepare("INSERT OR REPLACE INTO reports (id, created_at, json) VALUES (?, ?, ?)").run(r.id, r.createdAt, JSON.stringify(r));
+  }
+}
+
+// Push local changes to the shared snapshot. Await this before returning from any API route that wrote.
+export async function flushStore(): Promise<void> {
+  if (!blobEnabled()) return;
+  const s = store();
+  await writeSnapshot(() => ({ patients: [...s.patients.values()], reports: [...s.reports.values()], savedAt: new Date().toISOString() }));
 }
 
 export function recoveryDayFor(p: Patient): number {

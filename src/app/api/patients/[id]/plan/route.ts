@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { store, savePatient } from "@/lib/db/store";
+import { store, savePatient, flushStore, syncStore } from "@/lib/db/store";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await syncStore();
   const p = store().patients.get(id);
   if (!p) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const body = await request.json();
@@ -12,5 +13,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (body.procedureLabel) p.procedureLabel = body.procedureLabel;
   if (body.language) p.language = body.language;
   savePatient(p);
+  await flushStore();
   return NextResponse.json(p);
 }

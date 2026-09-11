@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { store } from "@/lib/db/store";
+import { store, syncStore } from "@/lib/db/store";
 import { severityRank } from "@/lib/rules/types";
 
 export async function GET() {
+  await syncStore();
   const s = store();
   const rows = [...s.reports.values()]
     .filter((r) => r.requiresHuman || (r.severity && severityRank(r.severity) >= 2))

@@ -4,7 +4,7 @@ import { ArrowLeft, Phone, Stethoscope, CalendarDays, Languages, Pill, ExternalL
 import { Shell } from "@/components/shell";
 import { SeverityBadge } from "@/components/severity";
 import { SeverityTimeline, SeverityDonut } from "@/components/charts";
-import { store, recoveryDayFor } from "@/lib/db/store";
+import { store, recoveryDayFor, syncStore } from "@/lib/db/store";
 import { computeStats, reportsFor } from "@/lib/db/stats";
 import { seedHistory } from "@/lib/db/seed-history";
 import { fmtDateTime } from "@/lib/format";
@@ -16,6 +16,7 @@ import { ReportDetail } from "@/components/report-detail";
 export const dynamic = "force-dynamic";
 
 export default async function NursePatientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ report?: string }> }) {
+  await syncStore();
   const { id } = await params;
   const { report } = await searchParams;
   seedHistory();

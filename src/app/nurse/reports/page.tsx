@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Shell } from "@/components/shell";
 import { SeverityBadge } from "@/components/severity";
 import { ReportDetail } from "@/components/report-detail";
-import { store } from "@/lib/db/store";
+import { store, syncStore } from "@/lib/db/store";
 import { reportsFor } from "@/lib/db/stats";
 import { seedHistory } from "@/lib/db/seed-history";
 import { fmtDateTime } from "@/lib/format";
@@ -17,6 +17,7 @@ const FILTERS: { key: string; label: string }[] = [
 ];
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ severity?: string; patient?: string; report?: string }> }) {
+  await syncStore();
   const { severity = "all", patient = "all", report } = await searchParams;
   seedHistory();
   const patients = [...store().patients.values()];

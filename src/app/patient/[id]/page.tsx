@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { CalendarDays, ClipboardList, Clock } from "lucide-react";
-import { store } from "@/lib/db/store";
+import { store, syncStore } from "@/lib/db/store";
 import { todayModel } from "@/lib/readout";
 import { TriageSheet } from "@/components/triage-sheet";
 import { SeverityBadge } from "@/components/severity";
@@ -11,6 +11,7 @@ import { t, bcp47 } from "@/lib/i18n";
 export const dynamic = "force-dynamic";
 
 export default async function PatientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ checkin?: string }> }) {
+  await syncStore();
   const { id } = await params;
   const { checkin } = await searchParams;
   const p = store().patients.get(id);

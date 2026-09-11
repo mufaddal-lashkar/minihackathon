@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Stethoscope, Sparkles, ChevronRight } from "lucide-react";
-import { store, recoveryDayFor } from "@/lib/db/store";
+import { store, recoveryDayFor, syncStore } from "@/lib/db/store";
 import { HeartPulse } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
+  await syncStore();
   const patients = [...store().patients.values()];
   return (
     <>

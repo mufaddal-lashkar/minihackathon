@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { store } from "@/lib/db/store";
+import { store, syncStore } from "@/lib/db/store";
 import { Shell } from "@/components/shell";
 import { listProcedures } from "@/lib/rules/load-rules";
 import { PlanEditor } from "@/components/plan-editor";
@@ -8,6 +8,7 @@ import { t, bcp47 } from "@/lib/i18n";
 export const dynamic = "force-dynamic";
 
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
+  await syncStore();
   const { id } = await params;
   const p = store().patients.get(id);
   if (!p) notFound();
