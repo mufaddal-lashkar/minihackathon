@@ -1,0 +1,6 @@
+.next
+node_modules
+docs
+data/recoverwell.db*
+data/tts-cache
+.playwright-mcp

@@ -1,62 +1,4 @@
 {
-  "p-fatima": {
-    "hi": {
-      "stamp": "{\"l\":\"Caesarean section\",\"p\":[[\"Wound care\",[\"Keep incision clean and dry\",\"Wear loose high-waisted clothing\"]],[\"Recovery\",[\"Rest when baby rests\",\"No driving for 6 weeks\",\"No lifting heavier than baby\"]],[\"Medication\",[\"Paracetamol 1 g every 6h\",\"Ibuprofen 400 mg every 8h with food\"]]]}",
-      "procedureLabel": "सिजेरियन सेक्शन",
-      "plan": [
-        {
-          "title": "घाव की देखभाल",
-          "items": [
-            "टांके वाली जगह को साफ और सूखा रखें",
-            "ढीले और कमर से ऊंचे कपड़े पहनें"
-          ]
-        },
-        {
-          "title": "रिकवरी",
-          "items": [
-            "जब बच्चा सोए तब आप भी आराम करें",
-            "6 सप्ताह तक गाड़ी न चलाएं",
-            "बच्चे से ज्यादा भारी चीज़ न उठाएं"
-          ]
-        },
-        {
-          "title": "दवाइयां",
-          "items": [
-            "Paracetamol 1 g हर 6 घंटे में",
-            "Ibuprofen 400 mg हर 8 घंटे में खाने के साथ"
-          ]
-        }
-      ]
-    },
-    "gu": {
-      "stamp": "{\"l\":\"Caesarean section\",\"p\":[[\"Wound care\",[\"Keep incision clean and dry\",\"Wear loose high-waisted clothing\"]],[\"Recovery\",[\"Rest when baby rests\",\"No driving for 6 weeks\",\"No lifting heavier than baby\"]],[\"Medication\",[\"Paracetamol 1 g every 6h\",\"Ibuprofen 400 mg every 8h with food\"]]]}",
-      "procedureLabel": "સીઝેરિયન સેક્શન",
-      "plan": [
-        {
-          "title": "ઘાની સંભાળ",
-          "items": [
-            "કાપની જગ્યા ચોખ્ખી અને સૂકી રાખો",
-            "ઢીલા અને કમરથી ઉપરના ઊંચા કપડાં પહેરો"
-          ]
-        },
-        {
-          "title": "રિકવરી (સાજા થવું)",
-          "items": [
-            "જ્યારે બાળક આરામ કરે ત્યારે તમે પણ આરામ કરો",
-            "6 અઠવાડિયા સુધી ગાડી ચલાવવી નહીં",
-            "બાળક કરતાં વધુ વજનદાર વસ્તુ ઊંચકવી નહીં"
-          ]
-        },
-        {
-          "title": "દવાઓ",
-          "items": [
-            "Paracetamol 1 g દર 6h કલાકે",
-            "Ibuprofen 400 mg દર 8h કલાકે ખોરાક સાથે"
-          ]
-        }
-      ]
-    }
-  },
   "p-asha": {
     "gu": {
       "stamp": "{\"l\":\"Laparoscopic appendectomy\",\"p\":[[\"Wound care\",[\"Keep dressing dry for 48h\",\"Shower from day 2, pat dry\",\"No baths or swimming for 2 weeks\"]],[\"Activity\",[\"Short walks 3× daily\",\"No lifting over 5 kg for 2 weeks\"]],[\"Medication\",[\"Paracetamol 1 g every 6h as needed\",\"Ibuprofen 400 mg with food if needed\"]]]}",
@@ -82,6 +24,34 @@
           "items": [
             "જરૂર પડે તો દર 6 કલાકે Paracetamol 1 g લો",
             "જરૂર પડે તો ખોરાક સાથે Ibuprofen 400 mg લો"
+          ]
+        }
+      ]
+    },
+    "hi": {
+      "stamp": "{\"l\":\"Laparoscopic appendectomy\",\"p\":[[\"Wound care\",[\"Keep dressing dry for 48h\",\"Shower from day 2, pat dry\",\"No baths or swimming for 2 weeks\"]],[\"Activity\",[\"Short walks 3× daily\",\"No lifting over 5 kg for 2 weeks\"]],[\"Medication\",[\"Paracetamol 1 g every 6h as needed\",\"Ibuprofen 400 mg with food if needed\"]]]}",
+      "procedureLabel": "लैप्रोस्कोपिक अपेंडिसेक्टॉमी",
+      "plan": [
+        {
+          "title": "घाव की देखभाल",
+          "items": [
+            "पट्टी को 48h तक सूखा रखें",
+            "day 2 से नहाएं, थपथपाकर सुखाएं",
+            "2 weeks तक टब में न नहाएं और न ही तैरें"
+          ]
+        },
+        {
+          "title": "गतिविधि",
+          "items": [
+            "दिन में 3× थोड़ी देर टहलें",
+            "2 weeks तक 5 kg से ज़्यादा वज़न न उठाएं"
+          ]
+        },
+        {
+          "title": "दवाइयाँ",
+          "items": [
+            "ज़रूरत पड़ने पर हर 6h में Paracetamol 1 g लें",
+            "ज़रूरत पड़ने पर भोजन के साथ Ibuprofen 400 mg लें"
           ]
         }
       ]
@@ -140,6 +110,64 @@
           "items": [
             "10 માં દિવસની ક્લિનિક મુલાકાત સુધી પાટો (ડ્રેસિંગ) એમનેમ રાખવો",
             "જો ઘામાંથી કંઈ પણ ઝરતું (લીક થતું) જણાય, તો તરત જ જાણ કરવી"
+          ]
+        }
+      ]
+    }
+  },
+  "p-fatima": {
+    "hi": {
+      "stamp": "{\"l\":\"Caesarean section\",\"p\":[[\"Wound care\",[\"Keep incision clean and dry\",\"Wear loose high-waisted clothing\"]],[\"Recovery\",[\"Rest when baby rests\",\"No driving for 6 weeks\",\"No lifting heavier than baby\"]],[\"Medication\",[\"Paracetamol 1 g every 6h\",\"Ibuprofen 400 mg every 8h with food\"]]]}",
+      "procedureLabel": "सिजेरियन सेक्शन",
+      "plan": [
+        {
+          "title": "घाव की देखभाल",
+          "items": [
+            "टांके वाली जगह को साफ और सूखा रखें",
+            "ढीले और कमर से ऊंचे कपड़े पहनें"
+          ]
+        },
+        {
+          "title": "रिकवरी",
+          "items": [
+            "जब बच्चा सोए तब आप भी आराम करें",
+            "6 सप्ताह तक गाड़ी न चलाएं",
+            "बच्चे से ज्यादा भारी चीज़ न उठाएं"
+          ]
+        },
+        {
+          "title": "दवाइयां",
+          "items": [
+            "Paracetamol 1 g हर 6 घंटे में",
+            "Ibuprofen 400 mg हर 8 घंटे में खाने के साथ"
+          ]
+        }
+      ]
+    },
+    "gu": {
+      "stamp": "{\"l\":\"Caesarean section\",\"p\":[[\"Wound care\",[\"Keep incision clean and dry\",\"Wear loose high-waisted clothing\"]],[\"Recovery\",[\"Rest when baby rests\",\"No driving for 6 weeks\",\"No lifting heavier than baby\"]],[\"Medication\",[\"Paracetamol 1 g every 6h\",\"Ibuprofen 400 mg every 8h with food\"]]]}",
+      "procedureLabel": "સીઝેરિયન સેક્શન",
+      "plan": [
+        {
+          "title": "ઘાની સંભાળ",
+          "items": [
+            "કાપની જગ્યા ચોખ્ખી અને સૂકી રાખો",
+            "ઢીલા અને કમરથી ઉપરના ઊંચા કપડાં પહેરો"
+          ]
+        },
+        {
+          "title": "રિકવરી (સાજા થવું)",
+          "items": [
+            "જ્યારે બાળક આરામ કરે ત્યારે તમે પણ આરામ કરો",
+            "6 અઠવાડિયા સુધી ગાડી ચલાવવી નહીં",
+            "બાળક કરતાં વધુ વજનદાર વસ્તુ ઊંચકવી નહીં"
+          ]
+        },
+        {
+          "title": "દવાઓ",
+          "items": [
+            "Paracetamol 1 g દર 6h કલાકે",
+            "Ibuprofen 400 mg દર 8h કલાકે ખોરાક સાથે"
           ]
         }
       ]

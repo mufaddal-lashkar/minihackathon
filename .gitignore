@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local sqlite
 data/recoverwell.db*
+
+.vercel
+.env*
