@@ -1,119 +1,42 @@
-# MiniHackathon
+# RecoverWell — post-operative recovery triage
 
-A Next.js project for the MiniHackathon.
+Patient-facing symptom triage where **severity is always decided by a deterministic rule table**, never by the LLM.
+Gemini is used only to (1) extract findings from free text with verbatim `sourceSpan` grounding and (2) phrase the
+explanation. Class-1 red flags are caught by a regex pre-filter **before any LLM call**, so Gemini being down never
+changes whether "I have chest pain" escalates.
 
-## Prerequisites
-
-- [Node.js](https://nodejs.org/) 20.x or later
-- npm (comes with Node.js) — or pnpm / yarn / bun, if you prefer
-- Git
-
-Check your versions:
+## Run
 
 ```bash
-node -v
-npm -v
+npm install
+cp .env.example .env.local   # add GEMINI_API_KEY (optional — falls back to keyword extractor + templates)
+npm run dev
 ```
 
-## Getting Started
+- `/` — pick a demo patient (appendectomy day 4, knee replacement day 6 on anticoagulants + diabetic, C-section day 3)
+- `/patient/:id` — Today view + "Something feels off?" sheet (chips, free text, voice)
+- `/nurse` — inbox: pending reassurances (interrupted graph, awaiting confirm/override) and auto-sent escalations, with the full fired / not-fired rule table
 
-1. Clone the repository:
+## Pipeline (LangGraph JS)
 
-   ```bash
-   git clone https://github.com/mufaddal-lashkar/minihackathon.git
-   cd minihackathon
-   ```
+`ingest → pre_filter → (Class-1 hit ? evaluate_rules : extract → validate → evaluate_rules) → triage → (human_review ⏸ | explain) → (notify_care_team | persist)`
 
-2. Install dependencies:
+- `pre_filter` — regex Class-1 red flags (chest pain, dyspnea, syncope, calf pain+swelling, soaking bleed, dehiscence, confusion, urinary retention, fever ≥38)
+- `extract` — Gemini structured output (or keyword stub). Never outputs severity.
+- `validate` — drops any finding whose `sourceSpan` is not a literal substring of the patient's words
+- `evaluate_rules` — `data/rules/<procedure>.json`: Class 2 (procedure+day expectations), Class 3 (patient-flag modifiers, raise-only), Class 4 (catch-all → human review)
+- `triage` — URGENT_CARE/EMERGENCY return `200` immediately. SELF_CARE/CALL_CLINIC from a Class-2/4 rule `interrupt()` → `202 pending_review` until a nurse confirms/overrides.
 
-   ```bash
-   npm install
-   ```
+## API
 
-3. Start the development server:
+- `POST /api/reports {patientId, rawText, modality?}` → `200` outcome or `202 pending_review`
+- `GET /api/reports/:id` — poll
+- `POST /api/reports/:id/review {action: confirm | override, severity?, reason?}` — resumes the graph
+- `GET /api/nurse/inbox`
 
-   ```bash
-   npm run dev
-   ```
+## Demo script
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-The page auto-updates as you edit files. Changes to `app/page.tsx` (or `pages/index.tsx`) are reflected immediately via hot reload.
-
-## Creating the Next.js App
-
-If this repo does not yet contain a Next.js app, scaffold one in place:
-
-```bash
-npx create-next-app@latest . --typescript --eslint --tailwind --app --src-dir --import-alias "@/*"
-```
-
-Use `.` to scaffold into the current directory. Remove `--tailwind`, `--src-dir`, or `--app` if you don't want those options.
-
-## Available Scripts
-
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start the development server on port 3000 |
-| `npm run build` | Create a production build |
-| `npm run start` | Serve the production build |
-| `npm run lint` | Run ESLint |
-
-## Project Structure
-
-```
-minihackathon/
-├── public/           # Static assets (images, fonts, favicon)
-├── src/
-│   └── app/          # App Router: layouts, pages, route handlers
-│       ├── layout.tsx
-│       ├── page.tsx
-│       └── globals.css
-├── next.config.ts    # Next.js configuration
-├── package.json
-├── tsconfig.json
-└── README.md
-```
-
-If you scaffolded without `--src-dir`, the `app/` directory sits at the repository root instead.
-
-## Environment Variables
-
-Create a `.env.local` file in the project root for local secrets. It is gitignored by default.
-
-```bash
-# .env.local
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
-```
-
-Only variables prefixed with `NEXT_PUBLIC_` are exposed to the browser. Never commit `.env.local` or any file containing real credentials.
-
-## Building for Production
-
-```bash
-npm run build
-npm run start
-```
-
-The production server runs on port 3000 by default. Override it with `PORT=8080 npm run start`.
-
-## Deployment
-
-The easiest path is [Vercel](https://vercel.com/new), the platform built by the Next.js team:
-
-1. Push this repository to GitHub.
-2. Import it at [vercel.com/new](https://vercel.com/new).
-3. Vercel detects Next.js automatically — no configuration needed.
-
-Any Node.js host works too — just run `npm run build` followed by `npm run start`.
-
-## Contributing
-
-1. Create a branch: `git switch -c feature/your-feature`
-2. Commit your changes: `git commit -m "feat: add your feature"`
-3. Push the branch: `git push -u origin feature/your-feature`
-4. Open a pull request.
-
-## License
-
-Add a license before distributing this project. [MIT](https://choosealicense.com/licenses/mit/) is a common default.
+1. Asha (appendectomy, day 4): chip **"My wound looks a bit red"** → 202, nurse sees rule `app-2-007` fired, confirms → patient card flips to CALL CLINIC "a nurse reviewed this".
+2. Same patient: type **"I have chest pain"** → instant EMERGENCY, no nurse gate, extraction shows *keyword/none* — the LLM was never called.
+3. Ravi (knee, anticoagulated, 72): **"my calf is sore and puffy"** → URGENT CARE via Class-1 pre-filter.
+4. Kill `GEMINI_API_KEY` → repeat 2 & 3: identical outcomes.
