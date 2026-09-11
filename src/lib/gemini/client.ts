@@ -27,10 +27,10 @@ export function hasGemini() {
 
 function model(temperature = 0) {
   return new ChatGoogleGenerativeAI({
-    model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
+    model: process.env.GEMINI_MODEL ?? "gemini-3.6-flash",
     apiKey: process.env.GEMINI_API_KEY,
     temperature,
-    maxRetries: 1,
+    maxRetries: 2,
   });
 }
 
@@ -48,7 +48,7 @@ Return one finding per distinct symptom. For each, sourceSpan MUST be an exact v
 NEVER decide urgency or severity — only extract what the patient said. Map "pink/red/redder" wound descriptions to wound_redness; spreading/growing redness to spreading_redness; clear/watery fluid to serous_drainage; pus/cloudy/smelly fluid to wound_drainage; normal-sounding pain to mild_incisional_pain; strong pain to incisional_pain.`],
       ["human", rawText],
     ]),
-    8000,
+    15000,
   );
   return { findings: out.findings, confidence: out.confidence };
 }
@@ -66,7 +66,7 @@ Required action by severity: SELF_CARE = keep following your plan, check in tomo
 Write in language code "${input.language}". Output plain text only.`],
       ["human", `Patient wrote: "${input.rawText}"`],
     ]),
-    6000,
+    10000,
   );
   const text = typeof res.content === "string" ? res.content : res.content.map((c) => ("text" in c ? c.text : "")).join("");
   if (!text.trim()) throw new Error("gemini_empty");
@@ -88,6 +88,6 @@ export async function geminiExtractPlan(base64: string, mimeType: string): Promi
       ["system", "You read a photo of a hospital discharge instruction sheet and transcribe it into a structured recovery plan. Copy instructions faithfully; do not invent items. Group under short titles. Return only what is on the sheet."],
       ["human", [{ type: "text", text: "Transcribe this discharge sheet." }, { type: "image_url", image_url: `data:${mimeType};base64,${base64}` }]],
     ]),
-    20000,
+    45000,
   );
 }
