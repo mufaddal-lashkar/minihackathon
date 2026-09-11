@@ -1,0 +1,202 @@
+[
+  {
+    "id": "fx-01",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 4,
+    "rawText": "my calf is sore and puffy",
+    "modality": "text",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "URGENT_CARE"
+  },
+  {
+    "id": "fx-02",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 4,
+    "rawText": "my wound is a bit more pink than yesterday",
+    "modality": "text",
+    "expectedClass": 2,
+    "expectedRoute": "202_pending",
+    "expectedSeverity": "CALL_CLINIC"
+  },
+  {
+    "id": "fx-03",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 2,
+    "rawText": "there is some clear fluid on the dressing",
+    "modality": "text",
+    "expectedClass": 2,
+    "expectedRoute": "200_self_care",
+    "expectedSeverity": "SELF_CARE"
+  },
+  {
+    "id": "fx-04",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 10,
+    "rawText": "there is some clear fluid on the dressing",
+    "modality": "text",
+    "expectedClass": 2,
+    "expectedRoute": "202_pending",
+    "expectedSeverity": "CALL_CLINIC"
+  },
+  {
+    "id": "fx-05",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 4,
+    "rawText": "I have chest pain",
+    "modality": "text",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "EMERGENCY"
+  },
+  {
+    "id": "fx-06",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 4,
+    "rawText": "I feel a bit tired today",
+    "modality": "text",
+    "expectedClass": 4,
+    "expectedRoute": "202_pending",
+    "expectedSeverity": "CALL_CLINIC"
+  },
+  {
+    "id": "fx-07",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 5,
+    "rawText": "the wound is bleeding through the dressing",
+    "modality": "text",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "URGENT_CARE"
+  },
+  {
+    "id": "fx-08",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 6,
+    "rawText": "my incision has opened up a little",
+    "modality": "text",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "URGENT_CARE"
+  },
+  {
+    "id": "fx-09",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 3,
+    "rawText": "I fainted when I stood up",
+    "modality": "text",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "EMERGENCY"
+  },
+  {
+    "id": "fx-10",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 3,
+    "rawText": "I feel confused and not myself",
+    "modality": "text",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "EMERGENCY"
+  },
+  {
+    "id": "fx-11",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 4,
+    "rawText": "I haven't been able to pee all day",
+    "modality": "text",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "URGENT_CARE"
+  },
+  {
+    "id": "fx-12",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 4,
+    "rawText": "I am short of breath",
+    "modality": "text",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "EMERGENCY"
+  },
+  {
+    "id": "fx-13",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 2,
+    "rawText": "my temperature is 38.5",
+    "modality": "text",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "URGENT_CARE"
+  },
+  {
+    "id": "fx-14",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 5,
+    "rawText": "there is a little blood when I wipe",
+    "modality": "text",
+    "expectedClass": 3,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "URGENT_CARE"
+  },
+  {
+    "id": "fx-15",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 1,
+    "rawText": "the wound is a bit red",
+    "modality": "text",
+    "expectedClass": 3,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "URGENT_CARE"
+  },
+  {
+    "id": "fx-16",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 4,
+    "rawText": "my husband says I seem confused",
+    "modality": "text",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "EMERGENCY"
+  },
+  {
+    "id": "fx-17",
+    "procedureCode": "knee-replacement",
+    "recoveryDay": 8,
+    "rawText": "my knee feels stiff and I can't bend it as far",
+    "modality": "text",
+    "expectedClass": 2,
+    "expectedRoute": "202_pending",
+    "expectedSeverity": "CALL_CLINIC"
+  },
+  {
+    "id": "fx-18",
+    "procedureCode": "c-section",
+    "recoveryDay": 2,
+    "rawText": "the bleeding is heavy like a period",
+    "modality": "text",
+    "expectedClass": 2,
+    "expectedRoute": "200_self_care",
+    "expectedSeverity": "SELF_CARE"
+  },
+  {
+    "id": "fx-19",
+    "procedureCode": "c-section",
+    "recoveryDay": 16,
+    "rawText": "the bleeding is still heavy like a period",
+    "modality": "text",
+    "expectedClass": 2,
+    "expectedRoute": "202_pending",
+    "expectedSeverity": "CALL_CLINIC"
+  },
+  {
+    "id": "fx-20",
+    "procedureCode": "appendectomy",
+    "recoveryDay": 4,
+    "rawText": "my calf is sore and puffy",
+    "modality": "voice",
+    "expectedClass": 1,
+    "expectedRoute": "200_escalation",
+    "expectedSeverity": "URGENT_CARE"
+  }
+]
